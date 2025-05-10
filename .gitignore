@@ -1,0 +1,75 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a script, but they might be committed accidentally.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+db.sqlite3
+db.sqlite3-journal # If you're using SQLite3 in WAL mode
+media/ # Usually, you don't want to commit user-uploaded media files
+staticfiles_collected/ # Generated static files
+
+# Virtual Pylance / MS Language Server
+.vscode/pylance_output*
+
+# Environments
+venv/
+.env
+env/
+ENV/
+.venv
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
