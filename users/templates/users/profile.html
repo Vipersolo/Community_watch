@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ user.username }}'s Profile - CommunityWatch{% endblock %}
+
+{% block content %}
+<h2>{{ user.username }}'s Profile</h2>
+<p><strong>Email:</strong> {{ user.email }}</p>
+<p><strong>Role:</strong> {{ user.get_role_display }}</p> {# Uses get_FOO_display for choice fields #}
+<p><strong>Email Verified:</strong> {% if user.email_verified_at %}Yes (at {{ user.email_verified_at }}){% else %}No{% endif %}</p>
+<p><strong>Joined:</strong> {{ user.date_joined }}</p>
+
+<hr>
+<h4>Actions:</h4>
+<p><a href="{% url 'users:password_change' %}" class="btn btn-secondary">Change Password</a></p>
+{# Add link to edit profile details later #}
+<p><a href="{% url 'issues:my_reported_issues' %}" class="btn btn-info">My Reported Issues</a></p> {# We'll create this later #}
+
+{% endblock %}

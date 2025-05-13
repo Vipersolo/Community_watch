@@ -42,6 +42,8 @@ INSTALLED_APPS = [
     'issues.apps.IssuesConfig'
 ]
 
+AUTH_USER_MODEL = 'users.User' # app_label.ModelName
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -57,10 +59,11 @@ ROOT_URLCONF = 'communitywatch.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -132,3 +135,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'users:login'            # Points to your login view's URL name
 LOGIN_REDIRECT_URL = 'home'          # After login, redirect to homepage
 LOGOUT_REDIRECT_URL = 'home'         # After logout, also go to homepage
+
+
+# Email backend (for development)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@communitywatch.local' # Example
