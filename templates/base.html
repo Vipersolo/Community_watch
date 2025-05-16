@@ -19,7 +19,7 @@
                 <ul class="navbar-nav ms-auto">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="#">Report Issue (comming soon)</a>
+                            <a class="nav-link" href="{% url 'issues:report_issue' %}">Report Issue</a>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'users:profile' %}">Profile ({{ user.username }})</a>

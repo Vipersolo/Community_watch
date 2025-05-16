@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %} {# If you need to load custom static files for this page specifically #}
+
+{% block title %}{{ page_title }} - CommunityWatch{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-7">
+        <h2>{{ page_title }}</h2>
+        <p class="lead">Please provide as much detail as possible. Your location will be requested to pinpoint the issue.</p>
+
+        <form method="POST" enctype="multipart/form-data" id="reportIssueForm">
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+
+            {# Render fields with Bootstrap styling support from widgets #}
+            {% for field in form %}
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }} {% if field.field.required %}<span class="text-danger">*</span>{% endif %}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <div id="{{ field.id_for_label }}_help" class="form-text">{{ field.help_text|safe }}</div>
+                    {% endif %}
+                    {% if field.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in field.errors %}
+                                <span>{{ error }}</span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+
+            <div id="geolocationMessage" class="alert alert-info my-3 d-none">Fetching location... Please wait.</div>
+
+            <button type="submit" class="btn btn-primary mt-3">Submit Report</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const latField = document.getElementById('id_latitude');
+    const lonField = document.getElementById('id_longitude');
+    const geoMessage = document.getElementById('geolocationMessage');
+    const reportForm = document.getElementById('reportIssueForm');
+
+    if (!latField || !lonField) {
+        console.error("Latitude or Longitude fields not found in the form.");
+        if(geoMessage) geoMessage.textContent = "Error: Geolocation fields missing in form. Cannot submit location.";
+        if(geoMessage) geoMessage.classList.remove('d-none', 'alert-info');
+        if(geoMessage) geoMessage.classList.add('alert-danger');
+        return;
+    }
+
+    if (navigator.geolocation) {
+        if(geoMessage) geoMessage.classList.remove('d-none'); // Show fetching message
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                latField.value = position.coords.latitude.toFixed(7);
+                lonField.value = position.coords.longitude.toFixed(7);
+                console.log("Location fetched: ", latField.value, lonField.value);
+                if(geoMessage) geoMessage.textContent = "Location captured successfully!";
+                if(geoMessage) geoMessage.classList.remove('alert-info', 'alert-danger');
+                if(geoMessage) geoMessage.classList.add('alert-success');
+                setTimeout(() => { if(geoMessage) geoMessage.classList.add('d-none') }, 3000); // Hide after 3s
+            },
+            function (error) {
+                let errorMessage = "Error getting location: ";
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        errorMessage += "User denied the request for Geolocation.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        errorMessage += "Location information is unavailable.";
+                        break;
+                    case error.TIMEOUT:
+                        errorMessage += "The request to get user location timed out.";
+                        break;
+                    case error.UNKNOWN_ERROR:
+                        errorMessage += "An unknown error occurred.";
+                        break;
+                }
+                console.error(errorMessage);
+                if(geoMessage) geoMessage.textContent = errorMessage + " You may need to enable location services or report without precise coordinates if allowed.";
+                if(geoMessage) geoMessage.classList.remove('d-none', 'alert-info');
+                if(geoMessage) geoMessage.classList.add('alert-warning');
+                // Do not hide warning, let user see it.
+            }
+        );
+    } else {
+        const msg = "Geolocation is not supported by this browser.";
+        console.warn(msg);
+        if(geoMessage) geoMessage.textContent = msg;
+        if(geoMessage) geoMessage.classList.remove('d-none', 'alert-info');
+        if(geoMessage) geoMessage.classList.add('alert-warning');
+    }
+
+    // Optional: Prevent form submission if lat/lon are still empty and required
+    // reportForm.addEventListener('submit', function(event) {
+    //     if ((!latField.value || !lonField.value) /* && you decide they are strictly required */) {
+    //         alert("Location could not be determined. Please ensure location services are enabled.");
+    //         event.preventDefault(); // Stop form submission
+    //     }
+    // });
+});
+</script>
+{% endblock %}

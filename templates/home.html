@@ -12,7 +12,7 @@
                 <a href="{% url 'users:register' %}" class="btn btn-primary btn-lg px-4 gap-3">Register Now</a>
                 <a href="{% url 'users:login' %}" class="btn btn-outline-secondary btn-lg px-4">Login</a>
             {% else %}
-                <a href="#" class="btn btn-primary btn-lg px-4 gap-3">Report a New Issue  (comming soon)</a>
+                <a href="{% url 'issues:report_issue' %}" class="btn btn-primary btn-lg px-4 gap-3">Report a New Issue  (comming soon)</a>
                 <a href="#" class="btn btn-outline-secondary btn-lg px-4">View Issues</a> <!-- TODO: add real link later -->
             {% endif %}
         </div>
