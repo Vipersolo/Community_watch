@@ -79,3 +79,34 @@ class Upvote(models.Model):  # This is line 61 (or around there)
     def __str__(self):
         # THIS LINE MUST BE INDENTED FURTHER (relative to 'def __str__:')
         return f"{self.user.username} upvoted '{self.issue.title}'"
+
+
+
+class Comment(models.Model):
+    issue = models.ForeignKey(
+        'Issue',
+        on_delete=models.CASCADE,
+        related_name='comments'
+    )  # Each comment is linked to one issue; deleting the issue removes its comments
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='issue_comments'
+    )  # The user who made the comment; deleting the user removes their comments
+
+    comment_text = models.TextField(
+        verbose_name="Your Comment"
+    )  # The content of the comment
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )  # Automatically stores the timestamp when the comment is created
+
+    class Meta:
+        ordering = ['created_at']  # Shows oldest comments first; use ['-created_at'] for newest first
+        verbose_name = "Comment"
+        verbose_name_plural = "Comments"
+
+    def __str__(self):
+        return f"Comment by {self.user.username} on '{self.issue.title}' at {self.created_at.strftime('%Y-%m-%d %H:%M')}"

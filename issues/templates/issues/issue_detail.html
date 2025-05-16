@@ -94,10 +94,54 @@
     </div>
 
     {# Comments section will go here in a later phase #}
-    <div class.1="mt-4">
-        <h3>Comments</h3>
-        <p><em>(Comment functionality coming soon)</em></p>
+    <div class="mt-4 card">
+    <div class="card-header">
+        <h3>Comments ({{ comments.count }})</h3>
     </div>
+    <div class="card-body">
+        {% if comments %}
+            {% for comment in comments %}
+            <div class="mb-3 pb-3 border-bottom">
+                <p class="mb-1">
+                    <strong>{{ comment.user.username }}</strong>
+                    <small class="text-muted ms-2">- {{ comment.created_at|timesince }} ago</small>
+                </p>
+                <p class="card-text">{{ comment.comment_text|linebreaksbr }}</p>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No comments yet. Be the first to comment!</p>
+        {% endif %}
+    </div>
+</div>
+
+{# Comment Form - only show if user is authenticated #}
+{% if user.is_authenticated %}
+<div class="mt-4 card">
+    <div class="card-header">
+        <h4>Leave a Comment</h4>
+    </div>
+    <div class="card-body">
+        <form method="POST" action="{% url 'issues:issue_detail' issue.pk %}"> {# Form submits to the same page #}
+            {% csrf_token %}
+            {% if comment_form.non_field_errors %}
+                <div class="alert alert-danger">
+                    {{ comment_form.non_field_errors }}
+                </div>
+            {% endif %}
+            <div class="mb-3">
+                {{ comment_form.comment_text.errors }}
+                {{ comment_form.comment_text }}
+            </div>
+            <button type="submit" class="btn btn-primary">Post Comment</button>
+        </form>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-info mt-4" role="alert">
+    Please <a href="{% url 'users:login' %}?next={{ request.path }}" class="alert-link">log in</a> to leave a comment.
+</div>
+{% endif %}
 </div>
 {% endblock %}
 

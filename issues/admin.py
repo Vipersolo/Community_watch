@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import IssueCategory, Issue, Upvote # Import your models
+from .models import IssueCategory, Issue, Upvote, Comment# Import your models
 
 # Register your models here.
 
@@ -62,3 +62,32 @@ class UpvoteAdmin(admin.ModelAdmin):
     list_display = ('user', 'issue', 'created_at')
     list_filter = ('created_at',)
     search_fields = ('user__username', 'issue__title')
+
+
+
+
+@admin.register(Comment)
+class CommentAdmin(admin.ModelAdmin):
+    list_display = ('user', 'issue_link', 'short_comment_text', 'created_at', 'is_recent_comment')
+    list_filter = ('created_at', 'user')
+    search_fields = ('comment_text', 'user__username', 'issue__title')
+    readonly_fields = ('created_at',) # Should not be editable
+
+    def issue_link(self, obj):
+        from django.urls import reverse
+        from django.utils.html import format_html
+        if obj.issue:
+            # Assuming your Issue model's admin change page is the default
+            url = reverse('admin:issues_issue_change', args=[obj.issue.pk])
+            return format_html('<a href="{}">{}</a>', url, obj.issue.title)
+        return "No associated issue"
+    issue_link.short_description = 'Issue'
+
+    def short_comment_text(self, obj):
+        return obj.comment_text[:75] + '...' if len(obj.comment_text) > 75 else obj.comment_text
+    short_comment_text.short_description = 'Comment (Excerpt)'
+
+    @admin.display(boolean=True, description='Recent?') # For boolean display
+    def is_recent_comment(self, obj):
+        from django.utils import timezone
+        return obj.created_at >= timezone.now() - timezone.timedelta(days=7)

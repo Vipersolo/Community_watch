@@ -4,7 +4,8 @@ from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required # For function-based views
 from django.contrib import messages
-from .models import Issue, IssueCategory
+from .models import Issue, IssueCategory, Comment
+from .forms import CommentForm # Import CommentForm
 from .forms import IssueForm # The form we just created
 from .models import Upvote # Import Upvote model
 
@@ -42,9 +43,36 @@ def report_issue(request):
 
 def issue_detail(request, pk):
     issue = get_object_or_404(Issue, pk=pk)
-    # We can add comments and upvote forms/logic here later
+    comments = issue.comments.all().order_by('created_at') # Or '-created_at' for newest first
+
+    if request.method == 'POST':
+        # This part handles new comment submission
+        if not request.user.is_authenticated: # Double check, though form might not show
+            messages.error(request, "You must be logged in to comment.")
+            return redirect('users:login') # Or redirect back to issue_detail
+
+        comment_form = CommentForm(request.POST)
+        if comment_form.is_valid():
+            new_comment = comment_form.save(commit=False)
+            new_comment.issue = issue
+            new_comment.user = request.user
+            new_comment.save()
+            messages.success(request, 'Your comment has been added successfully.')
+            # Redirect to the same page to show the new comment and clear the form
+            return redirect('issues:issue_detail', pk=issue.pk)
+        else:
+            # If form is invalid, we'll re-render the page with errors in comment_form
+            # We still need to pass an empty form for GET requests if POST fails
+            # So, we fall through to the GET request handling below,
+            # but 'comment_form' will contain the errors.
+            pass # Let the existing form rendering handle it
+    else: # GET request
+        comment_form = CommentForm() # An empty form for new comments
+
     context = {
         'issue': issue,
+        'comments': comments,
+        'comment_form': comment_form,
         'page_title': f"Issue: {issue.title}"
     }
     return render(request, 'issues/issue_detail.html', context)

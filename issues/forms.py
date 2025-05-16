@@ -1,5 +1,5 @@
 from django import forms
-from .models import Issue, IssueCategory
+from .models import Issue, IssueCategory, Comment
 
 class IssueForm(forms.ModelForm):
     # Explicitly define category to use a ModelChoiceField for better control if needed,
@@ -48,3 +48,21 @@ class IssueForm(forms.ModelForm):
             pass # Or log a warning, or decide if issue can be submitted without precise coords
 
         return cleaned_data
+    
+
+
+
+class CommentForm(forms.ModelForm):
+    class Meta:
+        model = Comment
+        fields = ['comment_text'] # Only the user needs to fill this
+        widgets = {
+            'comment_text': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Write your comment here...'
+            }),
+        }
+        labels = {
+            'comment_text': '', # Hides the default label if placeholder is enough
+        }
