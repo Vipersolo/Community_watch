@@ -66,7 +66,11 @@ class IssueListView(ListView):
         # If performance is an issue with many issues, you might only pass issues for the current page,
         # or implement more advanced map clustering/loading strategies.
         # For now, let's pass all for simplicity in map display.
-        context['all_issues_for_map'] = Issue.objects.all().values('pk', 'title', 'latitude', 'longitude', 'status')
+        #-----------------------------------------------------------
+        # Pass the Python list of dictionaries directly
+        # Ensure it's converted to a list from a QuerySet for json_script
+        issues_data_list = list(Issue.objects.all().values('pk', 'title', 'latitude', 'longitude', 'status'))
+        context['all_issues_for_map_data'] = issues_data_list # Renamed for clarity
         # You could also get distinct categories for filtering options
         context['categories'] = IssueCategory.objects.all()
         return context

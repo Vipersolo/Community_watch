@@ -6,12 +6,13 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
- integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
- crossorigin=""/>
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
 <style>
-    #issueListMap { height: 400px; width: 100%; border-radius: 0.25rem; margin-bottom: 1.5rem; }
+    #issueListMap { height: 400px; width: 100%; border-radius: 0.25rem; margin-bottom: 1.5rem;background-color: lightblue; /* TEMPORARY FOR DEBUGGING */ }
     .issue-card { margin-bottom: 1.5rem; }
     .issue-card img { max-height: 200px; object-fit: cover; }
+    
 </style>
 {% endblock %}
 
@@ -134,19 +135,18 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ all_issues_for_map_data|json_script:"issues-data-for-map" }}
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
- integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
- crossorigin=""></script>
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const mapElement = document.getElementById('issueListMap');
     if (mapElement) {
-        // Default view: Centered on Kerala, India (approx) if no issues, or average of issues.
-        // For simplicity, let's center on a default location like Thrissur, Kerala.
-        // You can calculate a dynamic center based on issue locations if preferred.
-        const defaultLat = {{ issues.0.latitude|default:"10.5276" }}; // Use first issue's lat or default
-        const defaultLon = {{ issues.0.longitude|default:"76.2144" }}; // Use first issue's lon or default
-        const defaultZoom = {{ issues|yesno:"10,7" }}; // Zoom in more if there are issues
+        const defaultLat = {{ issues.0.latitude|default:"10.5276" }};
+        const defaultLon = {{ issues.0.longitude|default:"76.2144" }};
+        const defaultZoom = {{ issues|yesno:"10,7" }};
 
         const issueListMap = L.map(mapElement).setView([defaultLat, defaultLon], defaultZoom);
 
@@ -154,33 +154,67 @@ document.addEventListener('DOMContentLoaded', function () {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(issueListMap);
 
-        const issuesForMap = JSON.parse('{{ all_issues_for_map|escapejs }}');
+        const issuesDataElement = document.getElementById('issues-data-for-map');
+        let issuesForMap = [];
 
-        issuesForMap.forEach(function(issue) {
-            if (issue.latitude && issue.longitude) {
-                // Determine marker color by status (basic example)
-                let markerColor = 'blue'; // Default
-                if (issue.status === 'Reported') markerColor = 'orange';
-                else if (issue.status === 'Resolved' || issue.status === 'Closed-No Action') markerColor = 'green';
-                else if (issue.status === 'Action Taken') markerColor = 'purple';
-
-                // Using a simple circle marker to vary color easily, or use custom icons
-                const circleMarker = L.circleMarker([issue.latitude, issue.longitude], {
-                    radius: 8,
-                    fillColor: markerColor,
-                    color: "#000",
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.7
-                }).addTo(issueListMap);
-
-                const popupContent = `
-                    <b><a href="/issues/${issue.pk}/">${issue.title}</a></b><br>
-                    Status: ${issue.status}
-                `; // End of the string literal
-                circleMarker.bindPopup(popupContent);
+        if (issuesDataElement) {
+            try {
+                issuesForMap = JSON.parse(issuesDataElement.textContent);
+                console.log("Successfully parsed issuesForMap from json_script:", issuesForMap);
+                console.log("Number of issues for map:", issuesForMap.length);
+            } catch (e) {
+                console.error("Error parsing issuesForMap JSON from json_script data:", e);
+                console.error("The content was:", issuesDataElement.textContent);
             }
-        });
+        } else {
+            console.warn("Could not find the 'issues-data-for-map' script tag. No markers will be loaded.");
+        }
+
+        if (issuesForMap.length > 0) {
+            issuesForMap.forEach(function(issue, index) {
+                // Optional: Detailed logging for each issue object from the JSON
+                // console.log(`--- Processing Issue at Index: ${index} ---`);
+                // console.log("Raw issue object:", issue);
+                // console.log("Direct access issue.pk:", issue.pk);
+                // console.log("Direct access issue.title:", issue.title);
+                // console.log("Direct access issue.status:", issue.status);
+
+                const lat = parseFloat(issue.latitude);
+                const lon = parseFloat(issue.longitude);
+
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    // CORRECTED console.log (if you want to keep it for debugging valid coordinates)
+                    console.log(`Issue "${issue.title}" (PK: ${issue.pk}) has valid coordinates: Lat=${lat}, Lon=${lon}`);
+
+                    let markerColor = 'blue';
+                    if (issue.status === 'Reported') markerColor = 'orange';
+                    else if (issue.status === 'Resolved' || issue.status === 'Closed-No Action') markerColor = 'green';
+                    else if (issue.status === 'Action Taken') markerColor = 'purple';
+
+                    const circleMarker = L.circleMarker([lat, lon], {
+                        radius: 8,
+                        fillColor: markerColor,
+                        color: "#000",
+                        weight: 1,
+                        opacity: 1,
+                        fillOpacity: 0.7
+                    }).addTo(issueListMap);
+
+                    // CORRECTED popupContent
+                    const popupContent = `
+                        <b><a href="/issues/${issue.pk}/">${issue.title}</a></b><br>
+                        Status: ${issue.status}
+                    `;
+                    // console.log("Constructed popupContent for issue " + issue.pk + ":", popupContent); // Optional debug
+
+                    circleMarker.bindPopup(popupContent);
+                } else {
+                    console.warn(`Skipping issue "${issue.title || 'Unknown Title'}" (PK: ${issue.pk || 'N/A'}) due to invalid/missing coordinates. Original Lat: ${issue.latitude}, Lon: ${issue.longitude}`);
+                }
+            });
+        } else {
+            console.log("No issues to display on the map.");
+        }
     }
 });
 </script>
