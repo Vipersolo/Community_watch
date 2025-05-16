@@ -56,3 +56,26 @@ class Issue(models.Model):
 
     def __str__(self):
         return f"{self.title} (Reported by: {self.user.username if self.user else 'Unknown'})"
+    
+    def is_upvoted_by_user(self, user):
+        if user.is_authenticated:
+            # 'self.upvotes' comes from the related_name='upvotes' on the ForeignKey
+            # in the Upvote model pointing to Issue.
+            return self.upvotes.filter(user=user).exists()
+        return False
+
+class Upvote(models.Model):  # This is line 61 (or around there)
+    # ALL THE FOLLOWING LINES MUST BE INDENTED
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    issue = models.ForeignKey('Issue', on_delete=models.CASCADE, related_name='upvotes') # Using string 'Issue' to avoid import order issues
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # THESE LINES MUST BE INDENTED FURTHER (relative to 'class Meta:')
+        unique_together = ('user', 'issue')
+        verbose_name = "Upvote"
+        verbose_name_plural = "Upvotes"
+
+    def __str__(self):
+        # THIS LINE MUST BE INDENTED FURTHER (relative to 'def __str__:')
+        return f"{self.user.username} upvoted '{self.issue.title}'"

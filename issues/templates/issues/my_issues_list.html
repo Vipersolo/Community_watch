@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - CommunityWatch{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ page_title }}</h2>
+
+    {% if issues %}
+    <div class="list-group">
+        {% for issue in issues %}
+        <a href="{% url 'issues:issue_detail' issue.pk %}" class="list-group-item list-group-item-action">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">{{ issue.title }}</h5>
+                <small>{{ issue.reported_date|timesince }} ago</small>
+            </div>
+            <p class="mb-1">{{ issue.description|truncatewords:30 }}</p>
+            <small>Status: <span class="badge bg-info text-dark">{{ issue.get_status_display }}</span> | Category: {{ issue.category.name }}</small>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>You have not reported any issues yet. <a href="{% url 'issues:report_issue' %}">Report one now!</a></p>
+    {% endif %}
+</div>
+{% endblock %}

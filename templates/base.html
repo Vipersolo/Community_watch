@@ -22,6 +22,9 @@
                             <a class="nav-link" href="{% url 'issues:report_issue' %}">Report Issue</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="{% url 'issues:issue_list' %}">All Issues</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="{% url 'users:profile' %}">Profile ({{ user.username }})</a>
                         </li>
                         <li class="nav-item">
@@ -31,6 +34,9 @@
                             </form>
                         </li>
                     {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'issues:issue_list' %}">All Issues</a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'users:register' %}">Register</a>
                         </li>

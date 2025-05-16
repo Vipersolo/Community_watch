@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% load static %}
+{% load issue_tags %}
+
+{% block title %}{{ page_title }} - CommunityWatch{% endblock %}
+
+{% block extra_css %}
+{# Add Leaflet CSS if you plan to show an individual map here #}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+ integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+ crossorigin=""/>
+<style>
+    #issueMapDetail { height: 300px; width: 100%; border-radius: 0.25rem; margin-bottom: 1.5rem; }
+    .issue-image { max-width: 100%; height: auto; border-radius: 0.25rem; margin-bottom: 1.5rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'issues:issue_list' %}">All Issues</a></li> {# We'll create this URL soon #}
+            <li class="breadcrumb-item active" aria-current="page">{{ issue.title|truncatechars:50 }}</li>
+        </ol>
+    </nav>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h2 class="card-title mb-0">{{ issue.title }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-7">
+                    <p><strong>Description:</strong></p>
+                    <p>{{ issue.description|linebreaks }}</p>
+                    <hr>
+                    <p><strong>Category:</strong> {{ issue.category.name }}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-info text-dark">{{ issue.get_status_display }}</span></p>
+                    <p><strong>Reported by:</strong> {{ issue.user.username }} ({{ issue.user.email }})</p>
+                    <p><strong>Reported on:</strong> {{ issue.reported_date|date:"F d, Y, P" }}</p>
+                    <p><strong>Last updated:</strong> {{ issue.updated_at|timesince }} ago</p>
+
+                    {% if issue.video_url %}
+                        <p><strong>Video Link:</strong> <a href="{{ issue.video_url }}" target="_blank" rel="noopener noreferrer">{{ issue.video_url }}</a></p>
+                        {# Basic embed for YouTube for demonstration, make more robust if needed #}
+                        {% if "youtube.com" in issue.video_url or "youtu.be" in issue.video_url %}
+                        <div class="ratio ratio-16x9 mb-3">
+                            <iframe src="https.0//www.youtube.com/embed/{{ issue.video_url|slice:"-11:" }}" title="Issue Video" allowfullscreen></iframe>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+
+                    {# Upvote section will go here later #}
+                    <p><strong>Upvotes:</strong> <span id="upvotes-count-{{ issue.pk }}">{{ issue.upvotes_count }}</span></p>
+                    {% if user.is_authenticated %}
+                        {% get_upvote_status issue request.user as has_upvoted %} {# USE THE CUSTOM TAG #}
+                        <form method="POST" action="{% url 'issues:toggle_upvote_issue' issue.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            {% if has_upvoted %}
+                                <button type="submit" class="btn btn-sm btn-success mb-3" title="Remove Upvote">
+                                    <i class="fas fa-thumbs-up"></i> Upvoted
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-sm btn-outline-success mb-3" title="Upvote">
+                                    <i class="fas fa-thumbs-up"></i> Upvote
+                                </button>
+                            {% endif %}
+                        </form>
+                    {% else %}
+                        <p><a href="{% url 'users:login' %}?next={{ request.path }}">Login</a> to upvote.</p>
+                    {% endif %}
+
+                </div>
+                <div class="col-md-5">
+                    {% if issue.image %}
+                        <p><strong>Image:</strong></p>
+                        <a href="{{ issue.image.url }}" target="_blank">
+                            <img src="{{ issue.image.url }}" alt="Issue image for {{ issue.title }}" class="issue-image img-fluid">
+                        </a>
+                    {% else %}
+                        <p><em>No image provided.</em></p>
+                    {% endif %}
+
+                    <p class="mt-3"><strong>Location:</strong></p>
+                    <div id="issueMapDetail"></div>
+                    <p class="small text-muted">Lat: {{ issue.latitude }}, Lon: {{ issue.longitude }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer text-muted">
+            Issue ID: {{ issue.pk }}
+        </div>
+    </div>
+
+    {# Comments section will go here in a later phase #}
+    <div class.1="mt-4">
+        <h3>Comments</h3>
+        <p><em>(Comment functionality coming soon)</em></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+ crossorigin=""></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize map for the single issue
+        const lat = {{ issue.latitude }};
+        const lon = {{ issue.longitude }};
+
+        if (document.getElementById('issueMapDetail')) {
+            const mapDetail = L.map('issueMapDetail').setView([lat, lon], 15); // Adjust zoom level (15) as needed
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapDetail);
+
+            L.marker([lat, lon]).addTo(mapDetail)
+                .bindPopup("<b>{{ issue.title|escapejs }}</b><br>Status: {{ issue.get_status_display|escapejs }}")
+                .openPopup();
+        }
+    });
+</script>
+{% endblock %}

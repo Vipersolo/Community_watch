@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% load static %}
+{% load issue_tags %}
+
+{% block title %}{{ page_title }} - CommunityWatch{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+ integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+ crossorigin=""/>
+<style>
+    #issueListMap { height: 400px; width: 100%; border-radius: 0.25rem; margin-bottom: 1.5rem; }
+    .issue-card { margin-bottom: 1.5rem; }
+    .issue-card img { max-height: 200px; object-fit: cover; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ page_title }}</h2>
+    <p class="lead">Browse all civic issues reported by the community. Click on an issue for more details or find them on the map.</p>
+
+    {# Filter Form - basic example #}
+    <form method="GET" action="{% url 'issues:issue_list' %}" class="row g-3 mb-4 align-items-end">
+        <div class="col-md-4">
+            <label for="categoryFilter" class="form-label">Category:</label>
+            <select name="category" id="categoryFilter" class="form-select">
+                <option value="">All Categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat.name }}" {% if request.GET.category == cat.name %}selected{% endif %}>{{ cat.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label for="statusFilter" class="form-label">Status:</label>
+            <select name="status" id="statusFilter" class="form-select">
+                <option value="">All Statuses</option>
+                {% for status_val, status_display in view.model.STATUS_CHOICES %}
+                <option value="{{ status_val }}" {% if request.GET.status == status_val %}selected{% endif %}>{{ status_display }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100">Filter</button>
+        </div>
+        <div class="col-md-2">
+            <a href="{% url 'issues:issue_list' %}" class="btn btn-outline-secondary w-100">Clear</a>
+        </div>
+    </form>
+
+    <div id="issueListMap" class="mb-4"></div>
+
+    <div class="row">
+        {% if issues %}
+            {% for issue in issues %}
+            <div class="col-md-6 col-lg-4">
+                <div class="card issue-card shadow-sm">
+                    {% if issue.image %}
+                    <a href="{% url 'issues:issue_detail' issue.pk %}">
+                        <img src="{{ issue.image.url }}" class="card-img-top" alt="{{ issue.title|truncatechars:30 }}">
+                    </a>
+                    {% else %}
+                     <a href="{% url 'issues:issue_detail' issue.pk %}">
+                        <img src="{% static 'images/placeholder.png' %}" class="card-img-top" alt="Placeholder image"> {# Create a placeholder image in static/images #}
+                     </a>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">
+                            <a href="{% url 'issues:issue_detail' issue.pk %}" class="text-decoration-none">{{ issue.title|truncatewords:10 }}</a>
+                        </h5>
+                        <p class="card-text small text-muted">
+                            Category: {{ issue.category.name }} <br>
+                            Status: <span class="badge bg-secondary">{{ issue.get_status_display }}</span> <br>
+                            Reported: {{ issue.reported_date|date:"d M Y" }}
+                        </p>
+                        <p class="card-text">{{ issue.description|truncatewords:20 }}</p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'issues:issue_detail' issue.pk %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                            <div>
+                                <small class="text-muted me-2">Upvotes: {{ issue.upvotes_count }}</small>
+                                {% if user.is_authenticated %}
+                                    {% get_upvote_status issue request.user as has_upvoted %} {# USE THE CUSTOM TAG #}
+                                    <form method="POST" action="{% url 'issues:toggle_upvote_issue' issue.pk %}" class="d-inline">
+                                        {% csrf_token %}
+                                        {% if has_upvoted %}
+                                            <button type="submit" class="btn btn-sm btn-success" title="Remove Upvote">
+                                                <i class="fas fa-thumbs-up"></i> Upvoted
+                                            </button>
+                                        {% else %}
+                                            <button type="submit" class="btn btn-sm btn-outline-success" title="Upvote">
+                                                <i class="fas fa-thumbs-up"></i> Upvote
+                                            </button>
+                                        {% endif %}
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="col-12">No issues found matching your criteria, or no issues have been reported yet.</p>
+        {% endif %}
+    </div>
+
+    {# Pagination #}
+    {% if is_paginated %}
+    <nav aria-label="Page navigation">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a></li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a></li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+ crossorigin=""></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const mapElement = document.getElementById('issueListMap');
+    if (mapElement) {
+        // Default view: Centered on Kerala, India (approx) if no issues, or average of issues.
+        // For simplicity, let's center on a default location like Thrissur, Kerala.
+        // You can calculate a dynamic center based on issue locations if preferred.
+        const defaultLat = {{ issues.0.latitude|default:"10.5276" }}; // Use first issue's lat or default
+        const defaultLon = {{ issues.0.longitude|default:"76.2144" }}; // Use first issue's lon or default
+        const defaultZoom = {{ issues|yesno:"10,7" }}; // Zoom in more if there are issues
+
+        const issueListMap = L.map(mapElement).setView([defaultLat, defaultLon], defaultZoom);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(issueListMap);
+
+        const issuesForMap = JSON.parse('{{ all_issues_for_map|escapejs }}');
+
+        issuesForMap.forEach(function(issue) {
+            if (issue.latitude && issue.longitude) {
+                // Determine marker color by status (basic example)
+                let markerColor = 'blue'; // Default
+                if (issue.status === 'Reported') markerColor = 'orange';
+                else if (issue.status === 'Resolved' || issue.status === 'Closed-No Action') markerColor = 'green';
+                else if (issue.status === 'Action Taken') markerColor = 'purple';
+
+                // Using a simple circle marker to vary color easily, or use custom icons
+                const circleMarker = L.circleMarker([issue.latitude, issue.longitude], {
+                    radius: 8,
+                    fillColor: markerColor,
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.7
+                }).addTo(issueListMap);
+
+                const popupContent = `
+                    <b><a href="/issues/${issue.pk}/">${issue.title}</a></b><br>
+                    Status: ${issue.status}
+                `; // End of the string literal
+                circleMarker.bindPopup(popupContent);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

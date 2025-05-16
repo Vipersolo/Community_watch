@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import IssueCategory, Issue # Import your models
+from .models import IssueCategory, Issue, Upvote # Import your models
 
 # Register your models here.
 
@@ -54,3 +54,11 @@ class IssueAdmin(admin.ModelAdmin):
     #         'classes': ('collapse',) # Makes this section collapsible
     #     }),
     # )
+
+
+
+@admin.register(Upvote)
+class UpvoteAdmin(admin.ModelAdmin):
+    list_display = ('user', 'issue', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('user__username', 'issue__title')

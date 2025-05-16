@@ -7,5 +7,9 @@ app_name = 'issues' # THIS LINE IS CRUCIAL
 urlpatterns = [
     # Example:
     path('report/', views.report_issue, name='report_issue'),
+    path('<int:pk>/', views.issue_detail, name='issue_detail'),
+    path('', views.IssueListView.as_view(), name='issue_list'), # For all issues
+    path('my-issues/', views.my_reported_issues, name='my_reported_issues'), # For user's issues
+    path('<int:pk>/upvote/', views.toggle_upvote_issue, name='toggle_upvote_issue'),
     # Add your issue-related URL patterns here as you build them
 ]
