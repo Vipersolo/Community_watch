@@ -7,12 +7,11 @@
 {% block extra_css %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-      crossorigin=""/>
+      crossorigin="" />
 <style>
-    #issueListMap { height: 400px; width: 100%; border-radius: 0.25rem; margin-bottom: 1.5rem;background-color: lightblue; /* TEMPORARY FOR DEBUGGING */ }
+    #issueListMap { height: 400px; width: 100%; border-radius: 0.25rem; margin-bottom: 1.5rem; background-color: lightblue; /* TEMPORARY FOR DEBUGGING - remove if map works */ }
     .issue-card { margin-bottom: 1.5rem; }
     .issue-card img { max-height: 200px; object-fit: cover; }
-    
 </style>
 {% endblock %}
 
@@ -45,9 +44,19 @@
             <button type="submit" class="btn btn-primary w-100">Filter</button>
         </div>
         <div class="col-md-2">
-            <a href="{% url 'issues:issue_list' %}" class="btn btn-outline-secondary w-100">Clear</a>
+            <a href="{% url 'issues:issue_list' %}" class="btn btn-outline-secondary w-100">Clear Filters</a>
         </div>
     </form>
+
+    {# --- START: Display Search Query Information --- #}
+    {% if search_query %}
+        <div class="alert alert-info" role="alert">
+            Showing search results for: <strong>"{{ search_query }}"</strong>. 
+            <a href="{% url 'issues:issue_list' %}{% if request.GET.category %}?category={{ request.GET.category|urlencode }}{% endif %}{% if request.GET.status %}{% if request.GET.category %}&{% else %}?{% endif %}status={{ request.GET.status|urlencode }}{% endif %}" class="alert-link">Clear search (keep filters)</a>
+            
+        </div>
+    {% endif %}
+    {# --- END: Display Search Query Information --- #}
 
     <div id="issueListMap" class="mb-4"></div>
 
@@ -62,7 +71,7 @@
                     </a>
                     {% else %}
                      <a href="{% url 'issues:issue_detail' issue.pk %}">
-                        <img src="{% static 'images/placeholder.png' %}" class="card-img-top" alt="Placeholder image"> {# Create a placeholder image in static/images #}
+                        <img src="{% static 'images/placeholder.png' %}" class="card-img-top" alt="Placeholder image">
                      </a>
                     {% endif %}
                     <div class="card-body">
@@ -70,7 +79,7 @@
                             <a href="{% url 'issues:issue_detail' issue.pk %}" class="text-decoration-none">{{ issue.title|truncatewords:10 }}</a>
                         </h5>
                         <p class="card-text small text-muted">
-                            Category: {{ issue.category.name }} <br>
+                            Category: {{ issue.category.name|default:"N/A" }} <br>
                             Status: <span class="badge bg-secondary">{{ issue.get_status_display }}</span> <br>
                             Reported: {{ issue.reported_date|date:"d M Y" }}
                         </p>
@@ -80,7 +89,7 @@
                             <div>
                                 <small class="text-muted me-2">Upvotes: {{ issue.upvotes_count }}</small>
                                 {% if user.is_authenticated %}
-                                    {% get_upvote_status issue request.user as has_upvoted %} {# USE THE CUSTOM TAG #}
+                                    {% get_upvote_status issue request.user as has_upvoted %}
                                     <form method="POST" action="{% url 'issues:toggle_upvote_issue' issue.pk %}" class="d-inline">
                                         {% csrf_token %}
                                         {% if has_upvoted %}
@@ -101,7 +110,15 @@
             </div>
             {% endfor %}
         {% else %}
-            <p class="col-12">No issues found matching your criteria, or no issues have been reported yet.</p>
+            <p class="col-12">
+                {% if search_query %}
+                    No issues found matching your search criteria for "<strong>{{ search_query }}</strong>".
+                {% elif request.GET.category or request.GET.status %}
+                    No issues found matching your selected filters.
+                {% else %}
+                    No issues have been reported yet. Be the first to <a href="{% url 'issues:report_issue' %}">report one</a>!
+                {% endif %}
+            </p>
         {% endif %}
     </div>
 
@@ -110,7 +127,7 @@
     <nav aria-label="Page navigation">
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value|urlencode }}{% endif %}{% endfor %}">Previous</a></li>
             {% else %}
                 <li class="page-item disabled"><span class="page-link">Previous</span></li>
             {% endif %}
@@ -119,12 +136,12 @@
                 {% if page_obj.number == num %}
                     <li class="page-item active" aria-current="page"><span class="page-link">{{ num }}</span></li>
                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                    <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a></li>
+                    <li class="page-item"><a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value|urlencode }}{% endif %}{% endfor %}">{{ num }}</a></li>
                 {% endif %}
             {% endfor %}
 
             {% if page_obj.has_next %}
-                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&amp;{{ key }}={{ value|urlencode }}{% endif %}{% endfor %}">Next</a></li>
             {% else %}
                 <li class="page-item disabled"><span class="page-link">Next</span></li>
             {% endif %}
@@ -144,11 +161,19 @@
 document.addEventListener('DOMContentLoaded', function () {
     const mapElement = document.getElementById('issueListMap');
     if (mapElement) {
-        const defaultLat = {{ issues.0.latitude|default:"10.5276" }};
-        const defaultLon = {{ issues.0.longitude|default:"76.2144" }};
-        const defaultZoom = {{ issues|yesno:"10,7" }};
+        const defaultLat = parseFloat("{{ issues.0.latitude|default:'10.5276'|escapejs }}");
+        const defaultLon = parseFloat("{{ issues.0.longitude|default:'76.2144'|escapejs }}");
+        const defaultZoom = parseInt("{{ issues|yesno:'10,7'|escapejs }}", 10);
 
-        const issueListMap = L.map(mapElement).setView([defaultLat, defaultLon], defaultZoom);
+        // Fallback if issues is empty and defaultLat/Lon become NaN
+        const finalLat = isNaN(defaultLat) ? 10.5276 : defaultLat;
+        const finalLon = isNaN(defaultLon) ? 76.2144 : defaultLon;
+        const finalZoom = isNaN(defaultZoom) ? 7 : defaultZoom;
+
+
+        console.log("Map Init: Lat=", finalLat, "Lon=", finalLon, "Zoom=", finalZoom);
+
+        const issueListMap = L.map(mapElement).setView([finalLat, finalLon], finalZoom);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -160,11 +185,11 @@ document.addEventListener('DOMContentLoaded', function () {
         if (issuesDataElement) {
             try {
                 issuesForMap = JSON.parse(issuesDataElement.textContent);
-                console.log("Successfully parsed issuesForMap from json_script:", issuesForMap);
-                console.log("Number of issues for map:", issuesForMap.length);
+                // console.log("Successfully parsed issuesForMap from json_script:", issuesForMap);
+                // console.log("Number of issues for map:", issuesForMap.length);
             } catch (e) {
                 console.error("Error parsing issuesForMap JSON from json_script data:", e);
-                console.error("The content was:", issuesDataElement.textContent);
+                // console.error("The content was:", issuesDataElement.textContent);
             }
         } else {
             console.warn("Could not find the 'issues-data-for-map' script tag. No markers will be loaded.");
@@ -172,19 +197,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (issuesForMap.length > 0) {
             issuesForMap.forEach(function(issue, index) {
-                // Optional: Detailed logging for each issue object from the JSON
-                // console.log(`--- Processing Issue at Index: ${index} ---`);
-                // console.log("Raw issue object:", issue);
-                // console.log("Direct access issue.pk:", issue.pk);
-                // console.log("Direct access issue.title:", issue.title);
-                // console.log("Direct access issue.status:", issue.status);
-
                 const lat = parseFloat(issue.latitude);
                 const lon = parseFloat(issue.longitude);
 
                 if (!isNaN(lat) && !isNaN(lon)) {
-                    // CORRECTED console.log (if you want to keep it for debugging valid coordinates)
-                    console.log(`Issue "${issue.title}" (PK: ${issue.pk}) has valid coordinates: Lat=${lat}, Lon=${lon}`);
+                    // console.log(`Issue "${issue.title}" (PK: ${issue.pk}) has valid coordinates: Lat=${lat}, Lon=${lon}`);
 
                     let markerColor = 'blue';
                     if (issue.status === 'Reported') markerColor = 'orange';
@@ -200,21 +217,20 @@ document.addEventListener('DOMContentLoaded', function () {
                         fillOpacity: 0.7
                     }).addTo(issueListMap);
 
-                    // CORRECTED popupContent
                     const popupContent = `
                         <b><a href="/issues/${issue.pk}/">${issue.title}</a></b><br>
                         Status: ${issue.status}
                     `;
-                    // console.log("Constructed popupContent for issue " + issue.pk + ":", popupContent); // Optional debug
-
                     circleMarker.bindPopup(popupContent);
                 } else {
-                    console.warn(`Skipping issue "${issue.title || 'Unknown Title'}" (PK: ${issue.pk || 'N/A'}) due to invalid/missing coordinates. Original Lat: ${issue.latitude}, Lon: ${issue.longitude}`);
+                    // console.warn(`Skipping issue "${issue.title || 'Unknown Title'}" (PK: ${issue.pk || 'N/A'}) due to invalid/missing coordinates. Original Lat: ${issue.latitude}, Lon: ${issue.longitude}`);
                 }
             });
         } else {
-            console.log("No issues to display on the map.");
+            console.log("No issues to display on the map via markers (issuesForMap is empty or all have invalid coords).");
         }
+    } else {
+        // console.warn("#issueListMap element NOT found in the DOM.");
     }
 });
 </script>

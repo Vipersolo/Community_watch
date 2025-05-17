@@ -11,6 +11,7 @@ from .models import Issue, IssueCategory, Comment
 from .forms import CommentForm # Import CommentForm
 from .forms import IssueForm # The form we just created
 from .models import Upvote # Import Upvote model
+from django.db.models import Q # Import Q objects for OR queries
 
 # (Any existing views like temp_report_issue_placeholder can be removed or commented out)
 User = get_user_model()
@@ -86,37 +87,54 @@ def issue_detail(request, pk):
 # display a list of all reported issues
 class IssueListView(ListView):
     model = Issue
-    template_name = 'issues/issue_list.html' # Specify your own template name
-    context_object_name = 'issues' # How you'll refer to the list in the template
-    paginate_by = 10 # Show 10 issues per page
+    template_name = 'issues/issue_list.html'
+    context_object_name = 'issues'
+    paginate_by = 10
     ordering = ['-reported_date'] # Default ordering
+
+    def get_queryset(self):
+        queryset = super().get_queryset().select_related('user', 'category') # Optimize by prefetching related objects
+
+        # Get filter and search parameters from GET request
+        category_filter_name = self.request.GET.get('category', None)
+        status_filter = self.request.GET.get('status', None)
+        search_query = self.request.GET.get('q', None) # Get search query
+
+        if category_filter_name:
+            queryset = queryset.filter(category__name=category_filter_name)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+
+        # --- NEW SEARCH LOGIC ---
+        if search_query:
+            # Using Q objects to search in title OR description
+            # title__icontains makes the search case-insensitive
+            queryset = queryset.filter(
+                Q(title__icontains=search_query) | 
+                Q(description__icontains=search_query)
+            )
+        # --- END SEARCH LOGIC ---
+
+        return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = "All Reported Civic Issues"
-        # For the map, we'll pass all issues (or at least their coordinates and titles)
-        # If performance is an issue with many issues, you might only pass issues for the current page,
-        # or implement more advanced map clustering/loading strategies.
-        # For now, let's pass all for simplicity in map display.
-        #-----------------------------------------------------------
-        # Pass the Python list of dictionaries directly
-        # Ensure it's converted to a list from a QuerySet for json_script
-        issues_data_list = list(Issue.objects.all().values('pk', 'title', 'latitude', 'longitude', 'status'))
-        context['all_issues_for_map_data'] = issues_data_list # Renamed for clarity
-        # You could also get distinct categories for filtering options
+
+        # Pass the search query back to the template to display or pre-fill form
+        search_query = self.request.GET.get('q', '')
+        if search_query:
+            context['page_title'] = f"Search Results for: '{search_query}'"
+        context['search_query'] = search_query # For pre-filling search bar if not in navbar
+
+        issues_data_list = list(self.object_list.values('pk', 'title', 'latitude', 'longitude', 'status')) # Use self.object_list for current page if paginating map markers
+                                                                                                       # Or Issue.objects.all() if all markers always
+        context['all_issues_for_map_data'] = issues_data_list # For map markers
+
         context['categories'] = IssueCategory.objects.all()
         return context
 
-    def get_queryset(self):
-        queryset = super().get_queryset()
-        category_filter = self.request.GET.get('category')
-        status_filter = self.request.GET.get('status')
 
-        if category_filter:
-            queryset = queryset.filter(category__name=category_filter)
-        if status_filter:
-            queryset = queryset.filter(status=status_filter)
-        return queryset
 
 # You might also want a view for "My Reported Issues" for logged-in users
 @login_required
