@@ -12,4 +12,6 @@ urlpatterns = [
     path('my-issues/', views.my_reported_issues, name='my_reported_issues'), # For user's issues
     path('<int:pk>/upvote/', views.toggle_upvote_issue, name='toggle_upvote_issue'),
     # Add your issue-related URL patterns here as you build them
+     # --- NEW URL for Admin Dashboard ---
+    path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
 ]

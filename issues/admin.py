@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from .models import IssueCategory, Issue, Upvote, Comment# Import your models
 
 # Register your models here.
@@ -18,7 +18,44 @@ class IssueAdmin(admin.ModelAdmin):
     search_fields = ('title', 'description', 'user__username', 'user__email') # Search in related user fields
     list_filter = ('status', 'category', 'reported_date')
     raw_id_fields = ('user', 'category') # Better for lots of users/categories
-    readonly_fields = ('reported_date', 'created_at', 'updated_at', 'image_preview_display') # Fields not to be edited directly
+    readonly_fields = ('reported_date', 'created_at', 'updated_at', 'image_preview_display','upvotes_count') # Fields not to be edited directly
+    # --- NEW: Make 'status' editable directly in the list view ---
+    list_editable = ('status',)
+    # --- NEW: Define fieldsets for better layout, including internal_notes ---
+    fieldsets = (
+        (None, { # Main information section
+            'fields': ('title', 'description', 'user', 'category')
+        }),
+        ('Location & Media', {
+            'fields': ('latitude', 'longitude', 'image', 'image_preview_display', 'video_url')
+        }),
+        ('Status & Tracking', {
+            'fields': ('status', 'upvotes_count', 'internal_notes') # Add internal_notes here
+        }),
+        ('Important Dates (Read-Only)', {
+            'fields': ('reported_date', 'created_at', 'updated_at'),
+            'classes': ('collapse',) # Makes this section collapsible
+        }),
+    )
+
+    # --- NEW: Custom Admin Actions ---
+    @admin.action(description='Mark selected issues as Under Review')
+    def make_under_review(self, request, queryset):
+        updated_count = queryset.update(status='Under Review')
+        self.message_user(request, f'{updated_count} issues were successfully marked as Under Review.', messages.SUCCESS)
+
+    @admin.action(description='Mark selected issues as Action Taken')
+    def make_action_taken(self, request, queryset):
+        updated_count = queryset.update(status='Action Taken')
+        self.message_user(request, f'{updated_count} issues were successfully marked as Action Taken.', messages.SUCCESS)
+
+    @admin.action(description='Mark selected issues as Resolved')
+    def make_resolved(self, request, queryset):
+        updated_count = queryset.update(status='Resolved')
+        self.message_user(request, f'{updated_count} issues were successfully marked as Resolved.', messages.SUCCESS)
+
+    actions = ['make_under_review', 'make_action_taken', 'make_resolved']
+    # --- END Custom Admin Actions ---
 
     # For displaying the image thumbnail in list_display and readonly_fields
     def image_preview(self, obj):

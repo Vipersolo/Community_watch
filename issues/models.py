@@ -45,6 +45,9 @@ class Issue(models.Model):
     # Status and Tracking
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Reported')
     upvotes_count = models.IntegerField(default=0) # We'll manage this more actively in a later phase
+    # --- NEW FIELD ---
+    internal_notes = models.TextField(blank=True, null=True, help_text="Internal notes for administrators only.")
+    # --- END NEW FIELD ---
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} - CommunityWatch{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{{ page_title }}</h1>
+
+    {# Quick Stats Cards #}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-header">Total Issues</div>
+                <div class="card-body">
+                    <h4 class="card-title">{{ total_issues }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-header">Pending Issues</div>
+                <div class="card-body">
+                    <h4 class="card-title">{{ pending_issues_count }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Resolved Issues</div>
+                <div class="card-body">
+                    <h4 class="card-title">{{ resolved_issues_count }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-dark bg-light mb-3">
+                <div class="card-header">Registered Users</div>
+                <div class="card-body">
+                    <h4 class="card-title">{{ total_users }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {# Issues by Status #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    Issues by Status
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% for status, count in issues_by_status_display.items %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ status }}
+                            <span class="badge bg-primary rounded-pill">{{ count }}</span>
+                        </li>
+                    {% empty %}
+                        <li class="list-group-item">No issues found.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        {# Recently Reported Issues #}
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    Recently Reported Issues (Latest 5)
+                </div>
+                {% if recently_reported_issues %}
+                <ul class="list-group list-group-flush">
+                    {% for issue in recently_reported_issues %}
+                    <li class="list-group-item">
+                        <a href="{% url 'issues:issue_detail' issue.pk %}">{{ issue.title|truncatechars:40 }}</a>
+                        <small class="text-muted d-block">By: {{ issue.user.username }} - {{ issue.reported_date|timesince }} ago</small>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="card-body">
+                    <p class="card-text">No issues reported recently.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Quick Links to Django Admin #}
+    <div class="row mt-4">
+        <div class="col-12">
+            <h3>Quick Management Links</h3>
+            <div class="list-group">
+                <a href="{% url 'admin:issues_issue_changelist' %}" class="list-group-item list-group-item-action">Manage All Issues</a>
+                <a href="{% url 'admin:issues_issuecategory_changelist' %}" class="list-group-item list-group-item-action">Manage Issue Categories</a>
+                <a href="{% url 'admin:users_user_changelist' %}" class="list-group-item list-group-item-action">Manage Users</a> {# Assumes your app is 'users' and model is 'user' #}
+                {# Add more links as needed #}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

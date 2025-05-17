@@ -1,15 +1,19 @@
 from django.views.generic import ListView
+from django.contrib.admin.views.decorators import staff_member_required # For restricting access
+from django.db.models import Count
 from django.http import JsonResponse # For AJAX responses if you go that route later
 from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required # For function-based views
 from django.contrib import messages
+from django.contrib.auth import get_user_model # To get the active User model
 from .models import Issue, IssueCategory, Comment
 from .forms import CommentForm # Import CommentForm
 from .forms import IssueForm # The form we just created
 from .models import Upvote # Import Upvote model
 
 # (Any existing views like temp_report_issue_placeholder can be removed or commented out)
+User = get_user_model()
 
 @login_required # Ensures only logged-in users can access this view
 def report_issue(request):
@@ -153,3 +157,47 @@ def toggle_upvote_issue(request, pk):
     # Using HTTP_REFERER is common but can be unreliable.
     # Prefer redirecting to a known page like the issue detail.
     return redirect('issues:issue_detail', pk=issue.pk)
+
+
+
+@staff_member_required # Only staff members can access this page
+def admin_dashboard(request):
+    total_issues = Issue.objects.count()
+
+    # Issues by status (using a dictionary comprehension for cleaner structure)
+    issues_by_status_qs = Issue.objects.values('status').annotate(count=Count('status')).order_by('status')
+    issues_by_status = {item['status']: item['count'] for item in issues_by_status_qs}
+    # Ensure all statuses from STATUS_CHOICES are present, even if count is 0
+    for status_key, status_display in Issue.STATUS_CHOICES:
+        if status_key not in issues_by_status:
+            issues_by_status[status_key] = 0
+
+    # For display, map keys to their display names
+    issues_by_status_display = {
+        dict(Issue.STATUS_CHOICES)[status_key]: count 
+        for status_key, count in issues_by_status.items()
+    }
+
+    total_users = User.objects.count()
+    # If you have specific roles, you could count them too
+    # citizen_reporters_count = User.objects.filter(role='citizen').count() 
+    # admin_users_count = User.objects.filter(role='admin').count() # Assuming 'role' field as per Phase 1
+
+    pending_issues_count = Issue.objects.filter(status__in=['Reported', 'Under Review']).count()
+    resolved_issues_count = Issue.objects.filter(status='Resolved').count()
+
+    recently_reported_issues = Issue.objects.order_by('-reported_date')[:5] # Get latest 5
+    total_categories = IssueCategory.objects.count()
+
+    context = {
+        'page_title': 'Admin Dashboard',
+        'total_issues': total_issues,
+        'issues_by_status_display': issues_by_status_display,
+        'total_users': total_users,
+        'pending_issues_count': pending_issues_count,
+        'resolved_issues_count': resolved_issues_count,
+        'recently_reported_issues': recently_reported_issues,
+        'total_categories': total_categories,
+        # Add more stats as needed
+    }
+    return render(request, 'issues/admin_dashboard.html', context)

@@ -24,6 +24,11 @@
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'issues:issue_list' %}">All Issues</a>
                         </li>
+                        {% if user.is_staff %} {# Or use your custom role check like user.is_platform_admin #}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'issues:admin_dashboard' %}">Admin Dashboard</a>
+                            </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'users:profile' %}">Profile ({{ user.username }})</a>
                         </li>
