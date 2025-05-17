@@ -1,0 +1,10 @@
+Hi {{ user_name }},
+
+This is an update regarding your reported civic issue: "{{ issue_title }}".
+
+The status has been changed from "{{ old_status }}" to "{{ new_status }}".
+
+You can view the issue details here:
+{{ issue_url }}
+
+Thank you for using CommunityWatch!

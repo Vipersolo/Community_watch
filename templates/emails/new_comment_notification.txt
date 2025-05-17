@@ -1,0 +1,12 @@
+Hi {{ issue_reporter_name }},
+
+A new comment has been posted on your reported issue: "{{ issue_title }}".
+
+Commenter: {{ commenter_name }}
+Comment (snippet): {{ comment_text_snippet }}
+
+You can view the full comment and issue details here:
+{{ issue_url }}
+
+Regards,
+The CommunityWatch Team

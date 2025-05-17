@@ -1,0 +1,14 @@
+A new civic issue has been reported on CommunityWatch:
+
+Title: {{ issue_title }}
+Reported by: {{ reporter_name }}
+Category: {{ category_name }}
+Date Reported: {{ reported_date|date:"F d, Y, P" }}
+
+Description (snippet):
+{{ issue_description_snippet }}
+
+You can manage this issue here:
+{{ admin_issue_url }}
+
+Thank you.

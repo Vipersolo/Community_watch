@@ -1,0 +1,16 @@
+<p>A new civic issue has been reported on CommunityWatch:</p>
+
+<p><strong>Title:</strong> {{ issue_title }}</p>
+<p><strong>Reported by:</strong> {{ reporter_name }}</p>
+<p><strong>Category:</strong> {{ category_name }}</p>
+<p><strong>Date Reported:</strong> {{ reported_date|date:"F d, Y, P" }}</p>
+
+<p><strong>Description (snippet):</strong></p>
+<blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px;">
+    <p>{{ issue_description_snippet|linebreaksbr }}</p>
+</blockquote>
+
+<p>You can manage this issue here:<br>
+<a href="{{ admin_issue_url }}">{{ admin_issue_url }}</a></p>
+
+<p>Thank you.</p>

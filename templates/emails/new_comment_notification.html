@@ -1,0 +1,15 @@
+<p>Hi {{ issue_reporter_name }},</p>
+
+<p>A new comment has been posted on your reported issue: "<strong>{{ issue_title }}</strong>".</p>
+
+<p><strong>Commenter:</strong> {{ commenter_name }}</p>
+<p><strong>Comment (snippet):</strong></p>
+<blockquote style="border-left: 2px solid #ccc; padding-left: 10px; margin-left: 5px;">
+    <p>{{ comment_text_snippet|linebreaksbr }}</p>
+</blockquote>
+
+<p>You can view the full comment and issue details here:<br>
+<a href="{{ issue_url }}">{{ issue_url }}</a></p>
+
+<p>Regards,<br>
+The CommunityWatch Team</p>

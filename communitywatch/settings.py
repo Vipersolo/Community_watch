@@ -140,3 +140,6 @@ LOGOUT_REDIRECT_URL = 'home'         # After logout, also go to homepage
 # Email backend (for development)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'noreply@communitywatch.local' # Example
+
+# Custom project-level settings
+SITE_URL = 'http://127.0.0.1:8000' 

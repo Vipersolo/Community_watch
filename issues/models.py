@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings # To get AUTH_USER_MODEL if needed, though not directly for Category
 from django.utils import timezone # For default dates if needed, though auto_now_add handles it
+from django.urls import reverse 
 
 # Create your models here.
 
@@ -66,6 +67,13 @@ class Issue(models.Model):
             # in the Upvote model pointing to Issue.
             return self.upvotes.filter(user=user).exists()
         return False
+    
+    def get_absolute_url(self):
+        return reverse('issues:issue_detail', kwargs={'pk': self.pk})
+
+
+
+
 
 class Upvote(models.Model):  # This is line 61 (or around there)
     # ALL THE FOLLOWING LINES MUST BE INDENTED
