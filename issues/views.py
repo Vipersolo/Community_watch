@@ -8,10 +8,12 @@ from django.contrib.auth.decorators import login_required # For function-based v
 from django.contrib import messages
 from django.contrib.auth import get_user_model # To get the active User model
 from .models import Issue, IssueCategory, Comment
+from django.utils.http import urlencode # For safely building query strings
 from .forms import CommentForm # Import CommentForm
 from .forms import IssueForm # The form we just created
 from .models import Upvote # Import Upvote model
 from django.db.models import Q # Import Q objects for OR queries
+from django.urls import reverse # For generating admin URLs
 
 # (Any existing views like temp_report_issue_placeholder can be removed or commented out)
 User = get_user_model()
@@ -178,33 +180,53 @@ def toggle_upvote_issue(request, pk):
 
 
 
-@staff_member_required # Only staff members can access this page
+@staff_member_required
 def admin_dashboard(request):
     total_issues = Issue.objects.count()
 
-    # Issues by status (using a dictionary comprehension for cleaner structure)
     issues_by_status_qs = Issue.objects.values('status').annotate(count=Count('status')).order_by('status')
     issues_by_status = {item['status']: item['count'] for item in issues_by_status_qs}
-    # Ensure all statuses from STATUS_CHOICES are present, even if count is 0
-    for status_key, status_display in Issue.STATUS_CHOICES:
+    for status_key, status_display_name in Issue.STATUS_CHOICES: # Use display name mapping
         if status_key not in issues_by_status:
             issues_by_status[status_key] = 0
 
-    # For display, map keys to their display names
+    # Use display names for keys in the final dict for template
     issues_by_status_display = {
-        dict(Issue.STATUS_CHOICES)[status_key]: count 
+        dict(Issue.STATUS_CHOICES)[status_key]: count
         for status_key, count in issues_by_status.items()
     }
 
     total_users = User.objects.count()
-    # If you have specific roles, you could count them too
-    # citizen_reporters_count = User.objects.filter(role='citizen').count() 
-    # admin_users_count = User.objects.filter(role='admin').count() # Assuming 'role' field as per Phase 1
 
-    pending_issues_count = Issue.objects.filter(status__in=['Reported', 'Under Review']).count()
-    resolved_issues_count = Issue.objects.filter(status='Resolved').count()
+    ready_for_assignment_status_key = 'Verified' # Use the actual key from STATUS_CHOICES
 
-    recently_reported_issues = Issue.objects.order_by('-reported_date')[:5] # Get latest 5
+    # --- NEW/UPDATED STATS ---
+    unassigned_issues_query = Q(assigned_to_manager__isnull=True) & Q(status=ready_for_assignment_status_key)
+    unassigned_issues_count = Issue.objects.filter(unassigned_issues_query).count()
+
+    # URL for Django Admin changelist, pre-filtered for unassigned issues
+
+    # Build the query parameters for the admin URL
+    admin_filter_params = {
+        'assigned_to_manager__isnull': 'True', # Note: 'True' as a string for query params
+        'status__exact': ready_for_assignment_status_key
+        # You can use 'status__exact' or just 'status'. 'status__exact' is more explicit.
+    }
+    # Note: status__exact=Reported might need to be status__in if multiple initial statuses
+    unassigned_issues_admin_url = (
+        reverse('admin:issues_issue_changelist') + '?' + urlencode(admin_filter_params)
+    ) 
+    # You might want to filter for status='Verified' or status__in=['Reported','Verified'] depending on your workflow
+
+    high_priority_open_issues_count = Issue.objects.filter(
+        priority='High', 
+        assigned_to_manager__isnull=False # Assuming you want open high priority issues that ARE assigned
+    ).exclude(status__in=['Resolved', 'Closed-No Action']).count()
+
+    issues_requiring_assistance_count = Issue.objects.filter(status='Requires Assistance').count()
+    # --- END NEW/UPDATED STATS ---
+
+    recently_reported_issues = Issue.objects.order_by('-reported_date')[:5]
     total_categories = IssueCategory.objects.count()
 
     context = {
@@ -212,10 +234,13 @@ def admin_dashboard(request):
         'total_issues': total_issues,
         'issues_by_status_display': issues_by_status_display,
         'total_users': total_users,
-        'pending_issues_count': pending_issues_count,
-        'resolved_issues_count': resolved_issues_count,
+        'unassigned_issues_count': unassigned_issues_count, # NEW
+        'unassigned_issues_admin_url': unassigned_issues_admin_url, # NEW
+        'high_priority_open_issues_count': high_priority_open_issues_count, # NEW
+        'issues_requiring_assistance_count': issues_requiring_assistance_count, # NEW (if you use this status)
         'recently_reported_issues': recently_reported_issues,
         'total_categories': total_categories,
-        # Add more stats as needed
+        'unassigned_issues_count': unassigned_issues_count,
+        'unassigned_issues_admin_url': unassigned_issues_admin_url,
     }
     return render(request, 'issues/admin_dashboard.html', context)

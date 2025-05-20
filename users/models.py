@@ -1,11 +1,12 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.utils import timezone # For email_verified_at
+# from django.utils import timezone # For email_verified_at
 
 class User(AbstractUser):
     ROLE_CHOICES = (
         ('citizen', 'Citizen Reporter'),
-        ('admin', 'Administrator'),
+        ('moderator', 'Platform Moderator'),
+        ('manager', 'Municipal Manager'),
     )
     # We want email to be the unique identifier for login
     email = models.EmailField(unique=True) # Override to make it unique
@@ -25,5 +26,8 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
-    def is_platform_admin(self): # A helper method
-        return self.role == 'admin'
+    def is_platform_moderator(self): # Helper method for moderator
+        return self.role == 'moderator'
+    
+    def is_municipal_manager(self): # NEW helper method for manager
+        return self.role == 'manager'

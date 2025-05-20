@@ -14,50 +14,82 @@ class IssueCategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Issue)
 class IssueAdmin(admin.ModelAdmin):
-    list_display = ('title', 'user', 'category', 'status', 'reported_date', 'upvotes_count', 'image_preview')
-    search_fields = ('title', 'description', 'user__username', 'user__email') # Search in related user fields
-    list_filter = ('status', 'category', 'reported_date')
-    raw_id_fields = ('user', 'category') # Better for lots of users/categories
-    readonly_fields = ('reported_date', 'created_at', 'updated_at', 'image_preview_display','upvotes_count') # Fields not to be edited directly
-    # --- NEW: Make 'status' editable directly in the list view ---
-    list_editable = ('status',)
-    # --- NEW: Define fieldsets for better layout, including internal_notes ---
+    list_display = (
+        'title', 
+        'user', 
+        'category', 
+        'status', 
+        'priority',  # ADDED
+        'assigned_to_manager', # ADDED
+        'reported_date', 
+        'upvotes_count',
+        'image_preview'
+    )
+    search_fields = (
+        'title', 
+        'description', 
+        'user__username', 
+        'user__email', 
+        'assigned_to_manager__username' # ADDED search by assigned manager
+    )
+    list_filter = (
+        'status', 
+        'category', 
+        'priority', # ADDED
+        'assigned_to_manager', # ADDED
+        'reported_date'
+    )
+    list_editable = ('status', 'priority', 'assigned_to_manager') # ADDED priority and assigned_to_manager
+
+    raw_id_fields = ('user', 'category', 'assigned_to_manager') # ADDED assigned_to_manager for better UX if many managers
+
+    # Define fieldsets for better layout, including new fields
     fieldsets = (
         (None, { # Main information section
             'fields': ('title', 'description', 'user', 'category')
         }),
+        ('Assignment & Workflow', { # NEW/UPDATED Section
+            'fields': ('status', 'priority', 'assigned_to_manager', 'internal_notes')
+        }),
         ('Location & Media', {
             'fields': ('latitude', 'longitude', 'image', 'image_preview_display', 'video_url')
         }),
-        ('Status & Tracking', {
-            'fields': ('status', 'upvotes_count', 'internal_notes') # Add internal_notes here
-        }),
-        ('Important Dates (Read-Only)', {
-            'fields': ('reported_date', 'created_at', 'updated_at'),
+        ('Manager Resolution Details (Read-Only for Moderator)', { # For Moderator to view what Manager submitted
+            'fields': ('resolution_notes', 'resolution_image'), # Add a preview for resolution_image if desired
             'classes': ('collapse',) # Makes this section collapsible
+        }),
+        ('Tracking & Dates (Read-Only)', {
+            'fields': ('upvotes_count', 'reported_date', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
         }),
     )
 
-    # --- NEW: Custom Admin Actions ---
+    readonly_fields = (
+        'reported_date', 'created_at', 'updated_at', 
+        'image_preview_display', 'upvotes_count',
+        'resolution_notes', 'resolution_image' # Moderators view these, Managers edit them via their interface
+    )
+
+    # Custom Admin Actions (keep existing ones, potentially add more)
+    @admin.action(description='Mark selected issues as Verified & Awaiting Assignment')
+    def make_verified_awaiting_assignment(self, request, queryset):
+        updated_count = queryset.update(status='Verified') # Assuming 'Verified' is a status before assignment
+        self.message_user(request, f'{updated_count} issues were successfully marked as Verified & Awaiting Assignment.', messages.SUCCESS)
+
     @admin.action(description='Mark selected issues as Under Review')
     def make_under_review(self, request, queryset):
         updated_count = queryset.update(status='Under Review')
         self.message_user(request, f'{updated_count} issues were successfully marked as Under Review.', messages.SUCCESS)
 
-    @admin.action(description='Mark selected issues as Action Taken')
-    def make_action_taken(self, request, queryset):
-        updated_count = queryset.update(status='Action Taken')
-        self.message_user(request, f'{updated_count} issues were successfully marked as Action Taken.', messages.SUCCESS)
-
     @admin.action(description='Mark selected issues as Resolved')
     def make_resolved(self, request, queryset):
+        # Consider if resolution notes/image are mandatory when Moderator resolves
         updated_count = queryset.update(status='Resolved')
         self.message_user(request, f'{updated_count} issues were successfully marked as Resolved.', messages.SUCCESS)
 
-    actions = ['make_under_review', 'make_action_taken', 'make_resolved']
-    # --- END Custom Admin Actions ---
+    actions = ['make_verified_awaiting_assignment', 'make_under_review', 'make_resolved'] # Add new actions
 
-    # For displaying the image thumbnail in list_display and readonly_fields
+    # Image preview methods (keep as they are)
     def image_preview(self, obj):
         from django.utils.html import format_html
         if obj.image:
@@ -65,32 +97,12 @@ class IssueAdmin(admin.ModelAdmin):
         return "(No image)"
     image_preview.short_description = 'Image Preview'
 
-    def image_preview_display(self, obj): # For the detail view
+    def image_preview_display(self, obj):
         from django.utils.html import format_html
         if obj.image:
             return format_html('<img src="{}" width="300" />', obj.image.url)
         return "(No image)"
     image_preview_display.short_description = 'Current Image'
-
-
-    # To make image_preview_display work in fieldsets, you need to define fieldsets
-    # or add it to readonly_fields as done above.
-    # If you want more control over layout, use fieldsets:
-    # fieldsets = (
-    #     (None, {
-    #         'fields': ('title', 'description', 'user', 'category', 'status')
-    #     }),
-    #     ('Location', {
-    #         'fields': ('latitude', 'longitude')
-    #     }),
-    #     ('Media', {
-    #         'fields': ('image', 'image_preview_display', 'video_url')
-    #     }),
-    #     ('Tracking', {
-    #         'fields': ('upvotes_count', 'reported_date', 'created_at', 'updated_at'),
-    #         'classes': ('collapse',) # Makes this section collapsible
-    #     }),
-    # )
 
 
 

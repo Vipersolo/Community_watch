@@ -7,7 +7,7 @@
 <div class="container mt-4">
     <h1 class="mb-4">{{ page_title }}</h1>
 
-    {# Quick Stats Cards #}
+    {# Quick Stats Cards - Row 1 #}
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary mb-3">
@@ -43,6 +43,40 @@
         </div>
     </div>
 
+    {# Optional Stats Cards - Row 2 #}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-dark bg-warning mb-3">
+                <div class="card-header">Unassigned Verified Issues</div>
+                <div class="card-body">
+                    <h4 class="card-title">{{ unassigned_issues_count }}</h4>
+                    {% if unassigned_issues_count > 0 %}
+                        <a href="{{ unassigned_issues_admin_url }}" class="btn btn-sm btn-light mt-2">Assign Now</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info mb-3">
+                <div class="card-header">High Priority Open Issues</div>
+                <div class="card-body">
+                    <h4 class="card-title">{{ high_priority_open_issues_count }}</h4>
+                </div>
+            </div>
+        </div>
+        {% if issues_requiring_assistance_count > 0 %}
+        <div class="col-md-3">
+            <div class="card text-white bg-danger mb-3">
+                <div class="card-header">Issues Requiring Assistance</div>
+                <div class="card-body">
+                    <h4 class="card-title">{{ issues_requiring_assistance_count }}</h4>
+                    <a href="{% url 'admin:issues_issue_changelist' %}?status__exact=Requires+Assistance" class="btn btn-sm btn-light mt-2">View These Issues</a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
     <div class="row">
         {# Issues by Status #}
         <div class="col-md-6 mb-4">
@@ -51,9 +85,9 @@
                     Issues by Status
                 </div>
                 <ul class="list-group list-group-flush">
-                    {% for status, count in issues_by_status_display.items %}
+                    {% for status_display_name, count in issues_by_status_display.items %}
                         <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ status }}
+                            {{ status_display_name }}
                             <span class="badge bg-primary rounded-pill">{{ count }}</span>
                         </li>
                     {% empty %}
@@ -87,14 +121,14 @@
         </div>
     </div>
 
-    {# Quick Links to Django Admin #}
+    {# Quick Management Links #}
     <div class="row mt-4">
         <div class="col-12">
             <h3>Quick Management Links</h3>
             <div class="list-group">
                 <a href="{% url 'admin:issues_issue_changelist' %}" class="list-group-item list-group-item-action">Manage All Issues</a>
                 <a href="{% url 'admin:issues_issuecategory_changelist' %}" class="list-group-item list-group-item-action">Manage Issue Categories</a>
-                <a href="{% url 'admin:users_user_changelist' %}" class="list-group-item list-group-item-action">Manage Users</a> {# Assumes your app is 'users' and model is 'user' #}
+                <a href="{% url 'admin:users_user_changelist' %}" class="list-group-item list-group-item-action">Manage Users</a>
                 {# Add more links as needed #}
             </div>
         </div>

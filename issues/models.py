@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings # To get AUTH_USER_MODEL if needed, though not directly for Category
 from django.utils import timezone # For default dates if needed, though auto_now_add handles it
 from django.urls import reverse 
+# from django.contrib.gis.db import models as gis_models # Not needed if skipping GeoDjango
 
 # Create your models here.
 
@@ -25,11 +26,26 @@ class IssueCategory(models.Model):
 #actual civic issues reported by users.
 class Issue(models.Model):
     STATUS_CHOICES = [
-        ('Reported', 'Reported'),
-        ('Under Review', 'Under Review'),
-        ('Action Taken', 'Action Taken'),
-        ('Resolved', 'Resolved'),
-        ('Closed-No Action', 'Closed-No Action'),
+        ('Reported', 'Reported'),                             # Citizen
+        ('Under Review', 'Under Review'),                     # Moderator may set this
+        ('Verified', 'Verified & Awaiting Assignment'),     # Moderator
+        ('Assigned', 'Assigned to Manager'),                  # Moderator
+        ('Manager Acknowledged', 'Manager: Acknowledged'),      # Manager
+        ('Manager Investigating', 'Manager: Investigating'),  # Manager
+        ('Work In Progress', 'Manager: Work In Progress'),    # Manager
+        ('Awaiting Resources', 'Manager: Awaiting Resources'),# Manager
+        ('Requires Assistance', 'Manager: Requires Moderator Assistance'), # Manager (informal escalation)
+        ('Action Taken', 'Action Taken'),                       # Moderator or Manager
+        ('Resolved', 'Resolved'),                             # Moderator or Manager
+        ('Closed-No Action', 'Closed-No Action'),             # Moderator
+        ('Duplicate', 'Duplicate Issue'),                     # Moderator
+        ('Invalid', 'Invalid Report'),                        # Moderator
+    ]
+
+    PRIORITY_CHOICES = [
+        ('Low', 'Low Priority'),
+        ('Medium', 'Medium Priority'),
+        ('High', 'High Priority'),
     ]
 
     title = models.CharField(max_length=255)
@@ -47,8 +63,37 @@ class Issue(models.Model):
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Reported')
     upvotes_count = models.IntegerField(default=0) # We'll manage this more actively in a later phase
     # --- NEW FIELD ---
-    internal_notes = models.TextField(blank=True, null=True, help_text="Internal notes for administrators only.")
+    internal_notes = models.TextField(blank=True, null=True, help_text="Internal notes for administrators/moderators only.")
     # --- END NEW FIELD ---
+    # --- NEW FIELDS for Manager Workflow ---
+    assigned_to_manager = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL, # If manager account is deleted, issue becomes unassigned
+        related_name='managed_issues',
+        limit_choices_to={'role': 'manager'}, # Important: only allows users with role 'manager'
+        help_text="Municipal Manager currently responsible for this issue"
+    )
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default='Medium',
+        help_text="Priority level of the issue (Low, Medium, High)"
+    )
+    resolution_notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Detailed notes from the manager about the resolution or actions taken"
+    )
+    resolution_image = models.ImageField(
+        upload_to='resolution_images/', # Store resolution images in a separate folder
+        null=True,
+        blank=True,
+        help_text="Optional image uploaded by the manager showing the resolved issue or work done"
+    )
+    # is_escalated, escalation_notes ARE SKIPPED FOR NOW based on your request
+    # --- END NEW FIELDS ---
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -56,20 +101,18 @@ class Issue(models.Model):
     reported_date = models.DateTimeField(default=timezone.now) # Could also just use created_at
 
     class Meta:
-        ordering = ['-reported_date'] # Show newest issues first by default
+        ordering = ['-priority', '-reported_date'] # Order by priority, then by newest first
 
     def __str__(self):
-        return f"{self.title} (Reported by: {self.user.username if self.user else 'Unknown'})"
-    
-    def is_upvoted_by_user(self, user):
-        if user.is_authenticated:
-            # 'self.upvotes' comes from the related_name='upvotes' on the ForeignKey
-            # in the Upvote model pointing to Issue.
-            return self.upvotes.filter(user=user).exists()
-        return False
+        return f"{self.title} (Status: {self.get_status_display()})"
     
     def get_absolute_url(self):
         return reverse('issues:issue_detail', kwargs={'pk': self.pk})
+    
+    def is_upvoted_by_user(self, user):
+        if user.is_authenticated:
+            return self.upvotes.filter(user=user).exists()
+        return False
 
 
 
