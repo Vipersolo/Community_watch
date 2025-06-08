@@ -37,9 +37,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Third-party apps
+    'crispy_forms',
+    'crispy_bootstrap5',
     #Our Apps
     'users.apps.UsersConfig',
-    'issues.apps.IssuesConfig'
+    'issues.apps.IssuesConfig',
 ]
 
 AUTH_USER_MODEL = 'users.User' # app_label.ModelName
@@ -143,3 +146,8 @@ DEFAULT_FROM_EMAIL = 'noreply@communitywatch.local' # Example
 
 # Custom project-level settings
 SITE_URL = 'http://127.0.0.1:8000' 
+
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
+

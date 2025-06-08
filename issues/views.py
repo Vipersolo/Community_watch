@@ -121,49 +121,60 @@ class IssueListView(ListView):
     template_name = 'issues/issue_list.html'
     context_object_name = 'issues'
     paginate_by = 10
-    ordering = ['-reported_date'] # Default ordering
+    # ordering = ['-reported_date']
 
     def get_queryset(self):
-        queryset = super().get_queryset().select_related('user', 'category') # Optimize by prefetching related objects
+        queryset = super().get_queryset().select_related('user', 'category')  # Optimize DB queries
 
-        # Get filter and search parameters from GET request
+        # --- Filtering and Search ---
         category_filter_name = self.request.GET.get('category', None)
         status_filter = self.request.GET.get('status', None)
-        search_query = self.request.GET.get('q', None) # Get search query
+        search_query = self.request.GET.get('q', None)
 
         if category_filter_name:
             queryset = queryset.filter(category__name=category_filter_name)
         if status_filter:
             queryset = queryset.filter(status=status_filter)
-
-        # --- NEW SEARCH LOGIC ---
         if search_query:
-            # Using Q objects to search in title OR description
-            # title__icontains makes the search case-insensitive
             queryset = queryset.filter(
                 Q(title__icontains=search_query) | 
                 Q(description__icontains=search_query)
             )
-        # --- END SEARCH LOGIC ---
+
+        # --- Dynamic Sorting ---
+        sort_option = self.request.GET.get('sort', 'newest')  # Default to 'newest'
+        if sort_option == 'upvotes':
+            queryset = queryset.order_by('-upvotes_count', '-reported_date')
+        elif sort_option == 'oldest':
+            queryset = queryset.order_by('reported_date')
+        else:
+            queryset = queryset.order_by('-reported_date')  # Default fallback
 
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['page_title'] = "All Reported Civic Issues"
 
-        # Pass the search query back to the template to display or pre-fill form
+        # Page title and search query info
         search_query = self.request.GET.get('q', '')
         if search_query:
             context['page_title'] = f"Search Results for: '{search_query}'"
-        context['search_query'] = search_query # For pre-filling search bar if not in navbar
+        else:
+            context['page_title'] = "All Reported Civic Issues"
+        context['search_query'] = search_query
 
-        issues_data_list = list(self.object_list.values('pk', 'title', 'latitude', 'longitude', 'status')) # Use self.object_list for current page if paginating map markers
-                                                                                                       # Or Issue.objects.all() if all markers always
-        context['all_issues_for_map_data'] = issues_data_list # For map markers
+        # Map marker data (based on paginated results)
+        issues_data_list = list(self.object_list.values(
+            'pk', 'title', 'latitude', 'longitude', 'status'
+        ))
+        context['all_issues_for_map_data'] = issues_data_list
 
+        # Support UI filters
         context['categories'] = IssueCategory.objects.all()
+        context['current_sort'] = self.request.GET.get('sort', 'newest')
+
         return context
+
 
 
 
