@@ -4,16 +4,19 @@ from django.db.models import Count
 from django.http import JsonResponse # For AJAX responses if you go that route later
 from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required # For function-based views
+from django.contrib.auth.decorators import login_required,user_passes_test # For function-based views
 from django.contrib import messages
 from django.contrib.auth import get_user_model # To get the active User model
-from .models import Issue, IssueCategory, Comment
+from .models import Issue, Comment, IssueCategory # Your models
 from django.utils.http import urlencode # For safely building query strings
-from .forms import CommentForm # Import CommentForm
+from .forms import CommentForm, ManagerIssueUpdateForm # Import CommentForm
 from .forms import IssueForm # The form we just created
 from .models import Upvote # Import Upvote model
 from django.db.models import Q # Import Q objects for OR queries
 from django.urls import reverse # For generating admin URLs
+from django.db.models import Case, When, Value, IntegerField # <-- ADD THESE EXPLICIT IMPORTS
+# (If you had 'from django.db import models', these are technically under models.Case etc.,
+# but explicit imports are clearer and often better for linters)
 
 # (Any existing views like temp_report_issue_placeholder can be removed or commented out)
 User = get_user_model()
@@ -50,36 +53,62 @@ def report_issue(request):
 
 def issue_detail(request, pk):
     issue = get_object_or_404(Issue, pk=pk)
-    comments = issue.comments.all().order_by('created_at') # Or '-created_at' for newest first
+    comments = issue.comments.all().order_by('created_at') # Or '-created_at'
+
+    # Determine if the current user is the assigned manager for this issue
+    is_assigned_manager = (request.user.is_authenticated and 
+                           hasattr(request.user, 'is_municipal_manager') and 
+                           request.user.is_municipal_manager() and 
+                           issue.assigned_to_manager == request.user)
+
+    comment_form = CommentForm() # For citizens
+    manager_form = None # Initialize manager_form
+
+    if is_assigned_manager:
+        manager_form = ManagerIssueUpdateForm(instance=issue) # Pre-fill with current issue data (status, notes)
 
     if request.method == 'POST':
-        # This part handles new comment submission
-        if not request.user.is_authenticated: # Double check, though form might not show
-            messages.error(request, "You must be logged in to comment.")
-            return redirect('users:login') # Or redirect back to issue_detail
+        if 'submit_comment' in request.POST: # Differentiate comment submission
+            if not request.user.is_authenticated:
+                messages.error(request, "You must be logged in to comment.")
+                return redirect('users:login')
 
-        comment_form = CommentForm(request.POST)
-        if comment_form.is_valid():
-            new_comment = comment_form.save(commit=False)
-            new_comment.issue = issue
-            new_comment.user = request.user
-            new_comment.save()
-            messages.success(request, 'Your comment has been added successfully.')
-            # Redirect to the same page to show the new comment and clear the form
-            return redirect('issues:issue_detail', pk=issue.pk)
-        else:
-            # If form is invalid, we'll re-render the page with errors in comment_form
-            # We still need to pass an empty form for GET requests if POST fails
-            # So, we fall through to the GET request handling below,
-            # but 'comment_form' will contain the errors.
-            pass # Let the existing form rendering handle it
-    else: # GET request
-        comment_form = CommentForm() # An empty form for new comments
+            comment_form_submitted = CommentForm(request.POST)
+            if comment_form_submitted.is_valid():
+                new_comment = comment_form_submitted.save(commit=False)
+                new_comment.issue = issue
+                new_comment.user = request.user
+                new_comment.save()
+                messages.success(request, 'Your comment has been added.')
+                return redirect('issues:issue_detail', pk=issue.pk)
+            else:
+                # If comment form is invalid, re-render with errors
+                comment_form = comment_form_submitted # Pass the form with errors back
+
+        elif 'submit_manager_update' in request.POST and is_assigned_manager: # Differentiate manager update
+            manager_form_submitted = ManagerIssueUpdateForm(request.POST, request.FILES, instance=issue)
+            if manager_form_submitted.is_valid():
+                updated_issue = manager_form_submitted.save(commit=False)
+                # The form only submits 'status', 'resolution_notes', 'resolution_image'.
+                # Only update status if a new one was actually selected by the manager.
+                new_status = manager_form_submitted.cleaned_data.get('status')
+                if new_status: # Check if a status was selected from the dropdown
+                    updated_issue.status = new_status
+                # resolution_notes and resolution_image are handled by form.save() due to instance=issue
+                updated_issue.save() 
+                # Note: The issue_status_changed_notification signal should pick up this save.
+                messages.success(request, 'Issue details updated successfully by manager.')
+                return redirect('issues:issue_detail', pk=issue.pk)
+            else:
+                # If manager form is invalid, re-render with errors
+                manager_form = manager_form_submitted # Pass the form with errors back
 
     context = {
         'issue': issue,
         'comments': comments,
         'comment_form': comment_form,
+        'manager_form': manager_form, # Pass manager_form to context
+        'is_assigned_manager': is_assigned_manager, # Pass flag to template
         'page_title': f"Issue: {issue.title}"
     }
     return render(request, 'issues/issue_detail.html', context)
@@ -182,65 +211,96 @@ def toggle_upvote_issue(request, pk):
 
 @staff_member_required
 def admin_dashboard(request):
+    # --- Basic Stats ---
     total_issues = Issue.objects.count()
-
-    issues_by_status_qs = Issue.objects.values('status').annotate(count=Count('status')).order_by('status')
-    issues_by_status = {item['status']: item['count'] for item in issues_by_status_qs}
-    for status_key, status_display_name in Issue.STATUS_CHOICES: # Use display name mapping
-        if status_key not in issues_by_status:
-            issues_by_status[status_key] = 0
-
-    # Use display names for keys in the final dict for template
-    issues_by_status_display = {
-        dict(Issue.STATUS_CHOICES)[status_key]: count
-        for status_key, count in issues_by_status.items()
-    }
-
     total_users = User.objects.count()
-
-    ready_for_assignment_status_key = 'Verified' # Use the actual key from STATUS_CHOICES
-
-    # --- NEW/UPDATED STATS ---
-    unassigned_issues_query = Q(assigned_to_manager__isnull=True) & Q(status=ready_for_assignment_status_key)
-    unassigned_issues_count = Issue.objects.filter(unassigned_issues_query).count()
-
-    # URL for Django Admin changelist, pre-filtered for unassigned issues
-
-    # Build the query parameters for the admin URL
-    admin_filter_params = {
-        'assigned_to_manager__isnull': 'True', # Note: 'True' as a string for query params
-        'status__exact': ready_for_assignment_status_key
-        # You can use 'status__exact' or just 'status'. 'status__exact' is more explicit.
-    }
-    # Note: status__exact=Reported might need to be status__in if multiple initial statuses
-    unassigned_issues_admin_url = (
-        reverse('admin:issues_issue_changelist') + '?' + urlencode(admin_filter_params)
-    ) 
-    # You might want to filter for status='Verified' or status__in=['Reported','Verified'] depending on your workflow
-
-    high_priority_open_issues_count = Issue.objects.filter(
-        priority='High', 
-        assigned_to_manager__isnull=False # Assuming you want open high priority issues that ARE assigned
-    ).exclude(status__in=['Resolved', 'Closed-No Action']).count()
-
-    issues_requiring_assistance_count = Issue.objects.filter(status='Requires Assistance').count()
-    # --- END NEW/UPDATED STATS ---
-
     recently_reported_issues = Issue.objects.order_by('-reported_date')[:5]
     total_categories = IssueCategory.objects.count()
+
+    # --- Issues by Status Breakdown (for the list view) ---
+    issues_by_status_map = {
+        item['status']: item['count'] 
+        for item in Issue.objects.values('status').annotate(count=Count('status'))
+    }
+    issues_by_status_display = {
+        status_display: issues_by_status_map.get(status_key, 0)
+        for status_key, status_display in Issue.STATUS_CHOICES
+    }
+
+    # --- Unassigned Issues Count ---
+    ready_for_assignment_status_key = 'Verified'
+    unassigned_issues_query = Q(assigned_to_manager__isnull=True) & Q(status=ready_for_assignment_status_key)
+    unassigned_issues_count = Issue.objects.filter(unassigned_issues_query).count()
+    admin_filter_params = {
+        'assigned_to_manager__isnull': 'True',
+        'status__exact': ready_for_assignment_status_key
+    }
+    unassigned_issues_admin_url = reverse('admin:issues_issue_changelist') + '?' + urlencode(admin_filter_params)
+
+    # --- Pending and Resolved Counts ---
+    final_statuses = ['Resolved', 'Closed-No Action', 'Invalid', 'Duplicate']
+    pending_issues_count = Issue.objects.exclude(status__in=final_statuses).count()
+    resolved_issues_count = Issue.objects.filter(status='Resolved').count()
+
+    # --- FIX: ADDED HIGH PRIORITY COUNT CALCULATION ---
+    # This counts issues with priority 'High' that are not in a final/closed state.
+    high_priority_open_issues_count = Issue.objects.filter(
+        priority='High'
+    ).exclude(status__in=final_statuses).count()
+    
+    # --- Optional: Count for issues needing assistance ---
+    issues_requiring_assistance_count = Issue.objects.filter(status='Requires Assistance').count()
+
 
     context = {
         'page_title': 'Admin Dashboard',
         'total_issues': total_issues,
-        'issues_by_status_display': issues_by_status_display,
         'total_users': total_users,
-        'unassigned_issues_count': unassigned_issues_count, # NEW
-        'unassigned_issues_admin_url': unassigned_issues_admin_url, # NEW
-        'high_priority_open_issues_count': high_priority_open_issues_count, # NEW
-        'issues_requiring_assistance_count': issues_requiring_assistance_count, # NEW (if you use this status)
         'recently_reported_issues': recently_reported_issues,
         'total_categories': total_categories,
+        'issues_by_status_display': issues_by_status_display,
         'unassigned_issues_count': unassigned_issues_count,
         'unassigned_issues_admin_url': unassigned_issues_admin_url,
+        'pending_issues_count': pending_issues_count,
+        'resolved_issues_count': resolved_issues_count,
+        'high_priority_open_issues_count': high_priority_open_issues_count, # ADDED TO CONTEXT
+        'issues_requiring_assistance_count': issues_requiring_assistance_count, # ADDED TO CONTEXT
     }
     return render(request, 'issues/admin_dashboard.html', context)
+
+
+
+
+# Helper function to check if the user is a Municipal Manager
+def is_manager(user):
+    return user.is_authenticated and hasattr(user, 'is_municipal_manager') and user.is_municipal_manager()
+
+@login_required
+@user_passes_test(is_manager, login_url='home') # Redirect to home if not a manager. Or 'users:login'
+def manager_dashboard(request):
+    # Base queryset for issues assigned to the current manager that are not yet fully closed
+    assigned_issues_base = Issue.objects.filter(
+        assigned_to_manager=request.user
+    ).exclude(
+        status__in=['Resolved', 'Closed-No Action']
+    )
+
+    # Annotate the queryset with a numeric order for priority
+    assigned_issues_annotated = assigned_issues_base.annotate(
+        priority_order=Case(
+            When(priority='High', then=Value(1)),    # High priority gets 1
+            When(priority='Medium', then=Value(2)), # Medium priority gets 2
+            When(priority='Low', then=Value(3)),     # Low priority gets 3
+            default=Value(4),                        # Any other/null priority gets 4
+            output_field=IntegerField(),             # Ensures the result is treated as an integer
+        )
+    )
+
+    # Now, order by the annotated field 'priority_order', then by 'reported_date'
+    assigned_issues = assigned_issues_annotated.order_by('priority_order', 'reported_date')
+
+    context = {
+        'page_title': 'My Assigned Issues',
+        'assigned_issues': assigned_issues,
+    }
+    return render(request, 'issues/manager_dashboard.html', context)

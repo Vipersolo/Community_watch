@@ -4,7 +4,18 @@
 
 <p>The status has been changed from "<strong>{{ old_status }}</strong>" to "<strong>{{ new_status }}</strong>".</p>
 
-<p>You can view the issue details here:<br>
+{% if resolution_notes %}
+<h4>Resolution Notes from the Manager:</h4>
+<p>{{ resolution_notes|linebreaksbr }}</p>
+{% endif %}
+
+{% if resolution_image_url %}
+<h4>Resolution Image:</h4>
+<p><a href="{{ resolution_image_url }}"><img src="{{ resolution_image_url }}" alt="Resolution Image" style="max-width: 300px; height: auto;"></a></p>
+<p>(If image doesn't display, click here: <a href="{{ resolution_image_url }}">{{ resolution_image_url }}</a>)</p>
+{% endif %}
+
+<p>You can view the full issue details here:<br>
 <a href="{{ issue_url }}">{{ issue_url }}</a></p>
 
 <p>Thank you for using CommunityWatch!</p>

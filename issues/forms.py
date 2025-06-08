@@ -66,3 +66,33 @@ class CommentForm(forms.ModelForm):
         labels = {
             'comment_text': '', # Hides the default label if placeholder is enough
         }
+
+
+
+
+class ManagerIssueUpdateForm(forms.ModelForm):
+    # Define which statuses a manager can set. This can be a subset of all Issue.STATUS_CHOICES
+    MANAGER_STATUS_CHOICES = [
+        ('', '--------- Select New Status ---------'), # Optional empty label
+        ('Manager Acknowledged', 'Acknowledge Receipt'),
+        ('Manager Investigating', 'Start Investigation'),
+        ('Work In Progress', 'Mark as Work In Progress'),
+        ('Awaiting Resources', 'Mark as Awaiting Resources'),
+        ('Requires Assistance', 'Flag for Moderator Assistance'), # Informal escalation
+        ('Resolved', 'Mark as Resolved'),
+        # Add other statuses a manager can directly set
+    ]
+    status = forms.ChoiceField(choices=MANAGER_STATUS_CHOICES, required=False, widget=forms.Select(attrs={'class': 'form-select mb-2'}))
+
+    class Meta:
+        model = Issue
+        fields = ['status', 'resolution_notes', 'resolution_image']
+        widgets = {
+            'resolution_notes': forms.Textarea(attrs={'class': 'form-control mb-2', 'rows': 4, 'placeholder': 'Enter details about actions taken or resolution...'}),
+            'resolution_image': forms.ClearableFileInput(attrs={'class': 'form-control mb-2'}),
+        }
+        labels = {
+            'status': 'Update Issue Status:',
+            'resolution_notes': 'Resolution Notes / Progress Update:',
+            'resolution_image': 'Upload Resolution Image (Optional):',
+        }

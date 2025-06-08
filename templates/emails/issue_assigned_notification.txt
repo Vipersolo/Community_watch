@@ -1,0 +1,14 @@
+Hi {{ manager_name }},
+
+A civic issue has been assigned to you on CommunityWatch:
+
+Title: {{ issue_title }}
+Priority: {{ issue_priority }}
+Reported by: {{ reported_by }}
+Reported on: {{ reported_date|date:"F d, Y, P" }}
+
+Please review and take appropriate action. You can view the issue details here:
+{{ issue_url }}
+
+Thank you,
+CommunityWatch Platform

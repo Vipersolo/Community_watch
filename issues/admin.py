@@ -39,7 +39,7 @@ class IssueAdmin(admin.ModelAdmin):
         'assigned_to_manager', # ADDED
         'reported_date'
     )
-    list_editable = ('status', 'priority', 'assigned_to_manager') # ADDED priority and assigned_to_manager
+    list_editable = ('status', 'priority') # ADDED priority and assigned_to_manager
 
     raw_id_fields = ('user', 'category', 'assigned_to_manager') # ADDED assigned_to_manager for better UX if many managers
 

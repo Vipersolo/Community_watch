@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+{% load issue_tags %} {# If you plan to use any custom tags here, like get_upvote_status (though less relevant for manager) #}
+
+{% block title %}{{ page_title }} - CommunityWatch{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">{{ page_title }}</h1>
+
+    {% if assigned_issues %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Reported On</th>
+                        <th scope="col">Priority</th>
+                        <th scope="col">Current Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in assigned_issues %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'issues:issue_detail' issue.pk %}">{{ issue.title|truncatechars:50 }}</a>
+                            {% if issue.internal_notes %}
+                                <i class="fas fa-sticky-note text-muted ms-1" title="Has internal notes"></i>
+                            {% endif %}
+                        </td>
+                        <td>{{ issue.category.name|default:"N/A" }}</td>
+                        <td>{{ issue.reported_date|date:"d M Y, P" }}</td>
+                        <td>
+                            {% if issue.priority == 'High' %}
+                                <span class="badge bg-danger">{{ issue.get_priority_display }}</span>
+                            {% elif issue.priority == 'Medium' %}
+                                <span class="badge bg-warning text-dark">{{ issue.get_priority_display }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ issue.get_priority_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge 
+                            {% if issue.status == 'Resolved' %}bg-success
+                            {% elif issue.status == 'Reported' or issue.status == 'Verified' or issue.status == 'Assigned' %}bg-warning text-dark
+                            {% elif issue.status == 'Manager Acknowledged' or issue.status == 'Manager Investigating' or issue.status == 'Work In Progress' or issue.status == 'Awaiting Resources' %}bg-info text-dark
+                            {% elif issue.status == 'Requires Assistance' %}bg-danger
+                            {% else %}bg-secondary{% endif %}">
+                            {{ issue.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <a href="{% url 'issues:issue_detail' issue.pk %}" class="btn btn-sm btn-primary">View & Manage</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            You have no open issues currently assigned to you. Well done!
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

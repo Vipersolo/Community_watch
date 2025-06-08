@@ -1,3 +1,4 @@
+{# issues/templates/issues/admin_dashboard.html #}
 {% extends "base.html" %}
 {% load static %}
 
@@ -7,7 +8,7 @@
 <div class="container mt-4">
     <h1 class="mb-4">{{ page_title }}</h1>
 
-    {# Quick Stats Cards - Row 1 #}
+    {# --- Quick Stats Cards - Row 1 --- #}
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-white bg-primary mb-3">
@@ -43,7 +44,7 @@
         </div>
     </div>
 
-    {# Optional Stats Cards - Row 2 #}
+    {# --- Optional Stats Cards - Row 2 --- #}
     <div class="row mb-4">
         <div class="col-md-3">
             <div class="card text-dark bg-warning mb-3">
@@ -77,8 +78,8 @@
         {% endif %}
     </div>
 
+    {# --- Status and Recent Issues Breakdown --- #}
     <div class="row">
-        {# Issues by Status #}
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
@@ -97,7 +98,6 @@
             </div>
         </div>
 
-        {# Recently Reported Issues #}
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
@@ -121,7 +121,7 @@
         </div>
     </div>
 
-    {# Quick Management Links #}
+    {# --- Quick Management Links --- #}
     <div class="row mt-4">
         <div class="col-12">
             <h3>Quick Management Links</h3>

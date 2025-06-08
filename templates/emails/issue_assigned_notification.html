@@ -1,0 +1,16 @@
+<p>Hi {{ manager_name }},</p>
+
+<p>A civic issue has been assigned to you on CommunityWatch:</p>
+
+<ul>
+    <li><strong>Title:</strong> {{ issue_title }}</li>
+    <li><strong>Priority:</strong> {{ issue_priority }}</li>
+    <li><strong>Reported by:</strong> {{ reported_by }}</li>
+    <li><strong>Reported on:</strong> {{ reported_date|date:"F d, Y, P" }}</li>
+</ul>
+
+<p>Please review and take appropriate action. You can view the issue details here:<br>
+<a href="{{ issue_url }}">{{ issue_url }}</a></p>
+
+<p>Thank you,<br>
+CommunityWatch Platform</p>

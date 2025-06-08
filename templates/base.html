@@ -35,6 +35,11 @@
                                 <a class="nav-link" href="{% url 'issues:admin_dashboard' %}">Admin Dashboard</a>
                             </li>
                         {% endif %}
+                        {% if user.is_municipal_manager %} {# Use the helper method from User model #}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'issues:manager_dashboard' %}">Manager Dashboard</a>
+                            </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'users:profile' %}">Profile ({{ user.username }})</a>
                         </li>

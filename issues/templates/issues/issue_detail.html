@@ -7,8 +7,8 @@
 {% block extra_css %}
 {# Add Leaflet CSS if you plan to show an individual map here #}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
- integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
- crossorigin=""/>
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin="" />
 <style>
     #issueMapDetail { height: 300px; width: 100%; border-radius: 0.25rem; margin-bottom: 1.5rem; }
     .issue-image { max-width: 100%; height: auto; border-radius: 0.25rem; margin-bottom: 1.5rem; }
@@ -20,7 +20,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{% url 'issues:issue_list' %}">All Issues</a></li> {# We'll create this URL soon #}
+            <li class="breadcrumb-item"><a href="{% url 'issues:issue_list' %}">All Issues</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ issue.title|truncatechars:50 }}</li>
         </ol>
     </nav>
@@ -35,7 +35,7 @@
                     <p><strong>Description:</strong></p>
                     <p>{{ issue.description|linebreaks }}</p>
                     <hr>
-                    <p><strong>Category:</strong> {{ issue.category.name }}</p>
+                    <p><strong>Category:</strong> {{ issue.category.name|default:"N/A" }}</p>
                     <p><strong>Status:</strong> <span class="badge bg-info text-dark">{{ issue.get_status_display }}</span></p>
                     <p><strong>Reported by:</strong> {{ issue.user.username }} ({{ issue.user.email }})</p>
                     <p><strong>Reported on:</strong> {{ issue.reported_date|date:"F d, Y, P" }}</p>
@@ -43,18 +43,27 @@
 
                     {% if issue.video_url %}
                         <p><strong>Video Link:</strong> <a href="{{ issue.video_url }}" target="_blank" rel="noopener noreferrer">{{ issue.video_url }}</a></p>
-                        {# Basic embed for YouTube for demonstration, make more robust if needed #}
-                        {% if "youtube.com" in issue.video_url or "youtu.be" in issue.video_url %}
+                        {% if "youtube.com/embed/" in issue.video_url or "youtu.be/" in issue.video_url %}
+                        {# A more robust way to get YouTube video ID for embedding if needed #}
                         <div class="ratio ratio-16x9 mb-3">
-                            <iframe src="https.0//www.youtube.com/embed/{{ issue.video_url|slice:"-11:" }}" title="Issue Video" allowfullscreen></iframe>
+                            {# This part needs careful parsing of video ID for robust embedding. 
+                               The slice method is fragile. For now, a direct link is safer. 
+                               If you want embedding, you'll need a template tag or view logic 
+                               to extract video ID from various YouTube URL formats.
+                               Example: <iframe src="https://www.youtube.com/embed/VIDEO_ID" ...></iframe> 
+                            #}
+                            <p><small>Video embed can be complex; direct link provided above.</small></p>
+                        </div>
+                        {% elif "vimeo.com/" in issue.video_url %}
+                        <div class="ratio ratio-16x9 mb-3">
+                             <p><small>Vimeo embed can be complex; direct link provided above.</small></p>
                         </div>
                         {% endif %}
                     {% endif %}
 
-                    {# Upvote section will go here later #}
                     <p><strong>Upvotes:</strong> <span id="upvotes-count-{{ issue.pk }}">{{ issue.upvotes_count }}</span></p>
                     {% if user.is_authenticated %}
-                        {% get_upvote_status issue request.user as has_upvoted %} {# USE THE CUSTOM TAG #}
+                        {% get_upvote_status issue request.user as has_upvoted %}
                         <form method="POST" action="{% url 'issues:toggle_upvote_issue' issue.pk %}" class="d-inline">
                             {% csrf_token %}
                             {% if has_upvoted %}
@@ -93,73 +102,131 @@
         </div>
     </div>
 
-    {# Comments section will go here in a later phase #}
-    <div class="mt-4 card">
-    <div class="card-header">
-        <h3>Comments ({{ comments.count }})</h3>
-    </div>
-    <div class="card-body">
-        {% if comments %}
-            {% for comment in comments %}
-            <div class="mb-3 pb-3 border-bottom">
-                <p class="mb-1">
-                    <strong>{{ comment.user.username }}</strong>
-                    <small class="text-muted ms-2">- {{ comment.created_at|timesince }} ago</small>
-                </p>
-                <p class="card-text">{{ comment.comment_text|linebreaksbr }}</p>
-            </div>
-            {% endfor %}
-        {% else %}
-            <p>No comments yet. Be the first to comment!</p>
-        {% endif %}
-    </div>
-</div>
-
-{# Comment Form - only show if user is authenticated #}
-{% if user.is_authenticated %}
-<div class="mt-4 card">
-    <div class="card-header">
-        <h4>Leave a Comment</h4>
-    </div>
-    <div class="card-body">
-        <form method="POST" action="{% url 'issues:issue_detail' issue.pk %}"> {# Form submits to the same page #}
-            {% csrf_token %}
-            {% if comment_form.non_field_errors %}
-                <div class="alert alert-danger">
-                    {{ comment_form.non_field_errors }}
-                </div>
+    {# Display existing resolution details if any, and if set by a manager #}
+    {% if issue.resolution_notes or issue.resolution_image %}
+    <div class="mt-4 card border-info">
+        <div class="card-header bg-info text-white">
+            <h4>Resolution Details from Manager</h4>
+        </div>
+        <div class="card-body">
+            {% if issue.resolution_notes %}
+                <p><strong>Notes:</strong></p>
+                <p>{{ issue.resolution_notes|linebreaksbr }}</p>
             {% endif %}
-            <div class="mb-3">
-                {{ comment_form.comment_text.errors }}
-                {{ comment_form.comment_text }}
-            </div>
-            <button type="submit" class="btn btn-primary">Post Comment</button>
-        </form>
+            {% if issue.resolution_image %}
+                <p class="mt-2"><strong>Resolution Image:</strong></p>
+                <a href="{{ issue.resolution_image.url }}" target="_blank">
+                    <img src="{{ issue.resolution_image.url }}" alt="Resolution image for {{ issue.title }}" class="issue-image img-fluid" style="max-height: 300px;">
+                </a>
+            {% endif %}
+        </div>
     </div>
-</div>
-{% else %}
-<div class="alert alert-info mt-4" role="alert">
-    Please <a href="{% url 'users:login' %}?next={{ request.path }}" class="alert-link">log in</a> to leave a comment.
-</div>
-{% endif %}
-</div>
-{% endblock %}
+    {% endif %}
+
+    {# Manager Action Form - only show if user is the assigned manager #}
+    {% if user.is_authenticated and is_assigned_manager %}
+    <div class="mt-4 card border-success">
+        <div class="card-header bg-success text-white">
+            <h4>Manager Actions & Updates</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" action="{% url 'issues:issue_detail' issue.pk %}">
+                {% csrf_token %}
+                <h5>Current Status: <span class="badge bg-info text-dark">{{ issue.get_status_display }}</span></h5>
+                
+                <div class="mb-3">
+                    <label for="{{ manager_form.status.id_for_label }}" class="form-label">{{ manager_form.status.label }}</label>
+                    {{ manager_form.status }}
+                    {% if manager_form.status.errors %}<div class="invalid-feedback d-block">{{ manager_form.status.errors }}</div>{% endif %}
+                </div>
+                <div class="mb-3">
+                    <label for="{{ manager_form.resolution_notes.id_for_label }}" class="form-label">{{ manager_form.resolution_notes.label }}</label>
+                    {{ manager_form.resolution_notes }}
+                    {% if manager_form.resolution_notes.errors %}<div class="invalid-feedback d-block">{{ manager_form.resolution_notes.errors }}</div>{% endif %}
+                </div>
+                <div class="mb-3">
+                    <label for="{{ manager_form.resolution_image.id_for_label }}" class="form-label">{{ manager_form.resolution_image.label }}</label>
+                    {% if issue.resolution_image %} {# Shows current resolution image if one was previously uploaded #}
+                        <p><small>Current resolution image: <a href="{{ issue.resolution_image.url }}" target="_blank">{{ issue.resolution_image.name }}</a>. Uploading a new one will replace it.</small></p>
+                    {% endif %}
+                    {{ manager_form.resolution_image }}
+                    {% if manager_form.resolution_image.errors %}<div class="invalid-feedback d-block">{{ manager_form.resolution_image.errors }}</div>{% endif %}
+                </div>
+                <button type="submit" name="submit_manager_update" class="btn btn-success">Save Manager Update</button>
+            </form>
+        </div>
+    </div>
+    {% endif %} {# THIS 'ENDIF' IS FOR: if user.is_authenticated and is_assigned_manager #}
+
+    {# Citizen Comment Form - only show if user is authenticated (and perhaps not the assigned manager, or if managers can also make public comments) #}
+    {# For simplicity, let's allow anyone authenticated (including manager) to also use the public comment form #}
+    {% if user.is_authenticated %}
+    <div class="mt-4 card">
+        <div class="card-header">
+            <h4>Leave a Public Comment</h4>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{% url 'issues:issue_detail' issue.pk %}">
+                {% csrf_token %}
+                {% if comment_form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {{ comment_form.non_field_errors }}
+                    </div>
+                {% endif %}
+                <div class="mb-3">
+                    {{ comment_form.comment_text.errors }}
+                    {{ comment_form.comment_text }}
+                </div>
+                <button type="submit" name="submit_comment" class="btn btn-primary">Post Comment</button>
+            </form>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info mt-4" role="alert">
+        Please <a href="{% url 'users:login' %}?next={{ request.path }}" class="alert-link">log in</a> to leave a public comment.
+    </div>
+    {% endif %} {# THIS 'ENDIF' IS FOR: if user.is_authenticated (for citizen comment form) #}
+
+    {# Comments List #}
+    <div class="mt-4 card">
+        <div class="card-header">
+            <h3>Public Comments ({{ comments.count }})</h3>
+        </div>
+        <div class="card-body">
+            {% if comments %}
+                {% for comment in comments %}
+                <div class="mb-3 pb-3 border-bottom">
+                    <p class="mb-1">
+                        <strong>{{ comment.user.username }}</strong>
+                        <small class="text-muted ms-2">- {{ comment.created_at|timesince }} ago</small>
+                    </p>
+                    <p class="card-text">{{ comment.comment_text|linebreaksbr }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p>No public comments yet. Be the first to comment!</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div> {# End of container mt-4 #}
+{% endblock content %} {# CORRECTED: endblock with its name #}
 
 {% block extra_js %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
- integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
- crossorigin=""></script>
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        // Initialize map for the single issue
-        const lat = {{ issue.latitude }};
-        const lon = {{ issue.longitude }};
+        const latElement = document.getElementById('issueMapDetail'); // Check if map div exists first
+        if (latElement) {
+            const lat = {{ issue.latitude|stringformat:".6f" }}; // Ensure it's a float for JS
+            const lon = {{ issue.longitude|stringformat:".6f" }}; // Ensure it's a float for JS
 
-        if (document.getElementById('issueMapDetail')) {
-            const mapDetail = L.map('issueMapDetail').setView([lat, lon], 15); // Adjust zoom level (15) as needed
+            const mapDetail = L.map('issueMapDetail').setView([lat, lon], 15);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(mapDetail);
 
             L.marker([lat, lon]).addTo(mapDetail)

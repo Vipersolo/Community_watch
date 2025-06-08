@@ -4,7 +4,17 @@ This is an update regarding your reported civic issue: "{{ issue_title }}".
 
 The status has been changed from "{{ old_status }}" to "{{ new_status }}".
 
-You can view the issue details here:
+{% if resolution_notes %}
+Resolution Notes from the Manager:
+{{ resolution_notes }}
+{% endif %}
+
+{% if resolution_image_url %}
+You can view the resolution image here:
+{{ resolution_image_url }}
+{% endif %}
+
+You can view the full issue details here:
 {{ issue_url }}
 
 Thank you for using CommunityWatch!

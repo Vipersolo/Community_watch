@@ -14,4 +14,5 @@ urlpatterns = [
     # Add your issue-related URL patterns here as you build them
      # --- NEW URL for Admin Dashboard ---
     path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
+    path('dashboard/manager/', views.manager_dashboard, name='manager_dashboard'), # NEW URL
 ]
