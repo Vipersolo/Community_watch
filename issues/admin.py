@@ -20,6 +20,7 @@ class IssueAdmin(admin.ModelAdmin):
         'category', 
         'status', 
         'priority',  # ADDED
+        'municipal_area',
         'assigned_to_manager', # ADDED
         'reported_date', 
         'upvotes_count',
@@ -36,6 +37,7 @@ class IssueAdmin(admin.ModelAdmin):
         'status', 
         'category', 
         'priority', # ADDED
+        'municipal_area',
         'assigned_to_manager', # ADDED
         'reported_date'
     )
@@ -49,7 +51,7 @@ class IssueAdmin(admin.ModelAdmin):
             'fields': ('title', 'description', 'user', 'category')
         }),
         ('Assignment & Workflow', { # NEW/UPDATED Section
-            'fields': ('status', 'priority', 'assigned_to_manager', 'internal_notes')
+            'fields': ('status', 'priority', 'assigned_to_manager', 'internal_notes','municipal_area')
         }),
         ('Location & Media', {
             'fields': ('latitude', 'longitude', 'image', 'image_preview_display', 'video_url')
@@ -67,7 +69,7 @@ class IssueAdmin(admin.ModelAdmin):
     readonly_fields = (
         'reported_date', 'created_at', 'updated_at', 
         'image_preview_display', 'upvotes_count',
-        'resolution_notes', 'resolution_image' # Moderators view these, Managers edit them via their interface
+        'resolution_notes', 'resolution_image','municipal_area' # Moderators view these, Managers edit them via their interface
     )
 
     # Custom Admin Actions (keep existing ones, potentially add more)

@@ -100,6 +100,13 @@ class Issue(models.Model):
     # For admin and filtering
     reported_date = models.DateTimeField(default=timezone.now) # Could also just use created_at
 
+    municipal_area = models.CharField(
+        max_length=255, 
+        null=True, 
+        blank=True, 
+        help_text="Automatically determined municipal area/ward/suburb from location"
+    )
+
     class Meta:
         ordering = ['-priority', '-reported_date'] # Order by priority, then by newest first
 

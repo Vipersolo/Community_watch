@@ -1,4 +1,5 @@
 # issues/signals.py
+import requests
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.core.mail import send_mail
@@ -403,3 +404,62 @@ def new_issue_admin_notification(sender, instance, created, **kwargs):
                 fail_silently=False
             )
             print(f"New issue admin notification sent for issue PK {instance.pk} to: {admin_emails}")
+
+
+
+@receiver(post_save, sender=Issue)
+def fetch_municipal_area_for_new_issue(sender, instance, created, **kwargs):
+    """
+    When a new issue is created, use its lat/lon to call the Nominatim API
+    and save the local municipal area/ward/suburb name.
+    """
+    # 'created' is True only when the issue is first saved to the database.
+    # We also check if the area has not already been populated.
+    if created and instance.latitude and instance.longitude and not instance.municipal_area:
+        lat = instance.latitude
+        lon = instance.longitude
+
+        # Construct the Nominatim API URL. addressdetails=1 is important for getting structured data.
+        api_url = f"https://nominatim.openstreetmap.org/reverse?format=json&lat={lat}&lon={lon}&addressdetails=1"
+
+        # It's good practice to set a custom User-Agent for Nominatim's policy
+        headers = {
+            'User-Agent': 'CommunityWatchProject/1.0 (Contact: your-email@example.com)'
+        }
+
+        print(f"Fetching municipal area for new Issue PK {instance.pk}...")
+
+        try:
+            response = requests.get(api_url, headers=headers, timeout=10) # 10-second timeout
+            response.raise_for_status() # Raise an exception for HTTP errors (like 4xx or 5xx)
+
+            data = response.json()
+            address = data.get('address', {})
+
+            # Intelligently find the most specific local area name available.
+            # We try a prioritized list of keys that Nominatim might return for a locality.
+            # For Kochi, 'suburb' (e.g., 'Kaloor'), 'neighbourhood', or 'quarter' are common.
+            area_name = (
+                address.get('suburb') or 
+                address.get('neighbourhood') or 
+                address.get('quarter') or
+                address.get('county') # This might be the Taluk name, e.g., 'Kochi Taluk'
+            )
+
+            if area_name:
+                print(f"SUCCESS: Area found: '{area_name}'. Saving to issue.")
+                # Save the retrieved area name back to the issue instance
+                instance.municipal_area = area_name
+
+                # We must disconnect the signal temporarily before saving again
+                # to prevent an infinite loop of post_save calls.
+                post_save.disconnect(fetch_municipal_area_for_new_issue, sender=Issue)
+                instance.save(update_fields=['municipal_area'])
+                post_save.connect(fetch_municipal_area_for_new_issue, sender=Issue)
+            else:
+                print(f"WARNING: Could not determine a specific area name from API response for Issue PK {instance.pk}.")
+
+        except requests.exceptions.RequestException as e:
+            print(f"ERROR: Could not connect to Nominatim API. {e}")
+        except Exception as e:
+            print(f"ERROR: An unexpected error occurred while fetching municipal area for Issue PK {instance.pk}: {e}")
