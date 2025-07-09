@@ -12,6 +12,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 
+from decouple import config
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -140,9 +142,18 @@ LOGIN_REDIRECT_URL = 'home'          # After login, redirect to homepage
 LOGOUT_REDIRECT_URL = 'home'         # After logout, also go to homepage
 
 
-# Email backend (for development)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'noreply@communitywatch.local' # Example
+# # Email backend (for development)
+# EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# DEFAULT_FROM_EMAIL = 'noreply@communitywatch.local' # Example
+
+# --- EMAIL CONFIGURATION for Gmail ---
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True # For encrypting the connection
+EMAIL_HOST_USER = config('EMAIL_HOST_USER') # Reads from your .env file
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD') # Reads from your .env file
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER # Emails will be sent from this address
 
 # Custom project-level settings
 SITE_URL = 'http://127.0.0.1:8000' 

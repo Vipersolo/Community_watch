@@ -73,3 +73,6 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+...
+.env
