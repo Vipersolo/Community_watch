@@ -7,7 +7,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required,user_passes_test # For function-based views
 from django.contrib import messages
 from django.contrib.auth import get_user_model # To get the active User model
-from .models import Issue, Comment, IssueCategory # Your models
+from .models import Issue, Comment, IssueCategory, IssueImage  # Your models
 from django.utils.http import urlencode # For safely building query strings
 from .forms import CommentForm, ManagerIssueUpdateForm # Import CommentForm
 from .forms import IssueForm # The form we just created
@@ -36,6 +36,12 @@ def report_issue(request):
             # The reported_date defaults to timezone.now as per the model definition.
 
             issue.save() # Now save the issue to the database
+
+            # --- NEW: Handle Multiple Image Uploads ---
+            images = request.FILES.getlist('images') # 'images' is the name of our file input
+            for image_file in images:
+                IssueImage.objects.create(issue=issue, image=image_file)
+
             messages.success(request, 'Your issue has been reported successfully! Thank you for your contribution.')
             # Redirect to a new URL: to the detail page of the new issue (we'll create this view later)
             # For now, let's redirect to the homepage.

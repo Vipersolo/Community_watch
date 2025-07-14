@@ -1,8 +1,12 @@
 from django.contrib import admin, messages
-from .models import IssueCategory, Issue, Upvote, Comment# Import your models
+from django.utils.html import format_html
+from django.urls import reverse
+from django.utils import timezone
+from .models import IssueCategory, Issue, Upvote, Comment, IssueImage
 
-# Register your models here.
-
+# ------------------------------
+# IssueCategory Admin
+# ------------------------------
 @admin.register(IssueCategory)
 class IssueCategoryAdmin(admin.ModelAdmin):
     list_display = ('name', 'description', 'created_at', 'updated_at')
@@ -10,55 +14,82 @@ class IssueCategoryAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
 
 
-#Register Issue
+# ------------------------------
+# Inline: Multiple Issue Images
+# ------------------------------
+class IssueImageInline(admin.TabularInline):
+    model = IssueImage
+    extra = 1
+    readonly_fields = ('image_thumbnail',)
 
+    def image_thumbnail(self, obj):
+        if obj.image:
+            return format_html('<a href="{}"><img src="{}" width="150" /></a>', obj.image.url, obj.image.url)
+        return "No Image"
+    image_thumbnail.short_description = 'Thumbnail Preview'
+
+
+# ------------------------------
+# Issue Admin
+# ------------------------------
 @admin.register(Issue)
 class IssueAdmin(admin.ModelAdmin):
+    def list_image_preview(self, obj):
+        first_image = obj.images.first()
+        if first_image and first_image.image:
+            return format_html(
+                '<a href="{}"><img src="{}" width="50" height="50" style="object-fit: cover;"/></a>',
+                first_image.image.url, first_image.image.url
+            )
+        return "(No images)"
+    list_image_preview.short_description = 'Image Preview'
+
     list_display = (
-        'title', 
-        'user', 
-        'category', 
-        'status', 
-        'priority',  # ADDED
+        'title',
+        'user',
+        'category',
+        'status',
+        'priority',
         'municipal_area',
-        'assigned_to_manager', # ADDED
-        'reported_date', 
+        'assigned_to_manager',
+        'reported_date',
         'upvotes_count',
-        'image_preview'
+        'list_image_preview',
     )
+
     search_fields = (
-        'title', 
-        'description', 
-        'user__username', 
-        'user__email', 
-        'assigned_to_manager__username' # ADDED search by assigned manager
+        'title',
+        'description',
+        'user__username',
+        'user__email',
+        'assigned_to_manager__username'
     )
+
     list_filter = (
-        'status', 
-        'category', 
-        'priority', # ADDED
+        'status',
+        'category',
+        'priority',
         'municipal_area',
-        'assigned_to_manager', # ADDED
+        'assigned_to_manager',
         'reported_date'
     )
-    list_editable = ('status', 'priority') # ADDED priority and assigned_to_manager
 
-    raw_id_fields = ('user', 'category', 'assigned_to_manager') # ADDED assigned_to_manager for better UX if many managers
+    list_editable = ('status', 'priority')
+    raw_id_fields = ('user', 'category', 'assigned_to_manager')
 
-    # Define fieldsets for better layout, including new fields
     fieldsets = (
-        (None, { # Main information section
+        (None, {
             'fields': ('title', 'description', 'user', 'category')
         }),
-        ('Assignment & Workflow', { # NEW/UPDATED Section
-            'fields': ('status', 'priority', 'assigned_to_manager', 'internal_notes','municipal_area')
+        ('Assignment & Workflow', {
+            'fields': ('status', 'priority', 'assigned_to_manager', 'internal_notes', 'municipal_area')
         }),
         ('Location & Media', {
-            'fields': ('latitude', 'longitude', 'image', 'image_preview_display', 'video_url')
+            'fields': ('latitude', 'longitude', 'video_url')
         }),
-        ('Manager Resolution Details (Read-Only for Moderator)', { # For Moderator to view what Manager submitted
-            'fields': ('resolution_notes', 'resolution_image'), # Add a preview for resolution_image if desired
-            'classes': ('collapse',) # Makes this section collapsible
+        ('Manager Resolution Details (Read-Only for Moderator)', {
+            'fields': ('resolution_notes', 'resolution_image'),
+            'classes': ('collapse',)
         }),
         ('Tracking & Dates (Read-Only)', {
             'fields': ('upvotes_count', 'reported_date', 'created_at', 'updated_at'),
@@ -67,47 +98,34 @@ class IssueAdmin(admin.ModelAdmin):
     )
 
     readonly_fields = (
-        'reported_date', 'created_at', 'updated_at', 
-        'image_preview_display', 'upvotes_count',
-        'resolution_notes', 'resolution_image','municipal_area' # Moderators view these, Managers edit them via their interface
+        'reported_date', 'created_at', 'updated_at',
+        'upvotes_count', 'resolution_notes', 'resolution_image', 'municipal_area'
     )
 
-    # Custom Admin Actions (keep existing ones, potentially add more)
+    inlines = [IssueImageInline]
+
+    # ---------- Custom Admin Actions ----------
     @admin.action(description='Mark selected issues as Verified & Awaiting Assignment')
     def make_verified_awaiting_assignment(self, request, queryset):
-        updated_count = queryset.update(status='Verified') # Assuming 'Verified' is a status before assignment
-        self.message_user(request, f'{updated_count} issues were successfully marked as Verified & Awaiting Assignment.', messages.SUCCESS)
+        updated_count = queryset.update(status='Verified')
+        self.message_user(request, f'{updated_count} issues marked as Verified & Awaiting Assignment.', messages.SUCCESS)
 
     @admin.action(description='Mark selected issues as Under Review')
     def make_under_review(self, request, queryset):
         updated_count = queryset.update(status='Under Review')
-        self.message_user(request, f'{updated_count} issues were successfully marked as Under Review.', messages.SUCCESS)
+        self.message_user(request, f'{updated_count} issues marked as Under Review.', messages.SUCCESS)
 
     @admin.action(description='Mark selected issues as Resolved')
     def make_resolved(self, request, queryset):
-        # Consider if resolution notes/image are mandatory when Moderator resolves
         updated_count = queryset.update(status='Resolved')
-        self.message_user(request, f'{updated_count} issues were successfully marked as Resolved.', messages.SUCCESS)
+        self.message_user(request, f'{updated_count} issues marked as Resolved.', messages.SUCCESS)
 
-    actions = ['make_verified_awaiting_assignment', 'make_under_review', 'make_resolved'] # Add new actions
-
-    # Image preview methods (keep as they are)
-    def image_preview(self, obj):
-        from django.utils.html import format_html
-        if obj.image:
-            return format_html('<a href="{}"><img src="{}" width="50" height="50" style="object-fit: cover;"/></a>', obj.image.url, obj.image.url)
-        return "(No image)"
-    image_preview.short_description = 'Image Preview'
-
-    def image_preview_display(self, obj):
-        from django.utils.html import format_html
-        if obj.image:
-            return format_html('<img src="{}" width="300" />', obj.image.url)
-        return "(No image)"
-    image_preview_display.short_description = 'Current Image'
+    actions = ['make_verified_awaiting_assignment', 'make_under_review', 'make_resolved']
 
 
-
+# ------------------------------
+# Upvote Admin
+# ------------------------------
 @admin.register(Upvote)
 class UpvoteAdmin(admin.ModelAdmin):
     list_display = ('user', 'issue', 'created_at')
@@ -115,20 +133,18 @@ class UpvoteAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'issue__title')
 
 
-
-
+# ------------------------------
+# Comment Admin
+# ------------------------------
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):
     list_display = ('user', 'issue_link', 'short_comment_text', 'created_at', 'is_recent_comment')
     list_filter = ('created_at', 'user')
     search_fields = ('comment_text', 'user__username', 'issue__title')
-    readonly_fields = ('created_at',) # Should not be editable
+    readonly_fields = ('created_at',)
 
     def issue_link(self, obj):
-        from django.urls import reverse
-        from django.utils.html import format_html
         if obj.issue:
-            # Assuming your Issue model's admin change page is the default
             url = reverse('admin:issues_issue_change', args=[obj.issue.pk])
             return format_html('<a href="{}">{}</a>', url, obj.issue.title)
         return "No associated issue"
@@ -138,7 +154,6 @@ class CommentAdmin(admin.ModelAdmin):
         return obj.comment_text[:75] + '...' if len(obj.comment_text) > 75 else obj.comment_text
     short_comment_text.short_description = 'Comment (Excerpt)'
 
-    @admin.display(boolean=True, description='Recent?') # For boolean display
+    @admin.display(boolean=True, description='Recent?')
     def is_recent_comment(self, obj):
-        from django.utils import timezone
         return obj.created_at >= timezone.now() - timezone.timedelta(days=7)

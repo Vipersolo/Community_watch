@@ -57,7 +57,7 @@ class Issue(models.Model):
     latitude = models.DecimalField(max_digits=10, decimal_places=7) # e.g., 25.2048493
     longitude = models.DecimalField(max_digits=10, decimal_places=7) # e.g., 55.2707828
     # Media
-    image = models.ImageField(upload_to='issue_images/', null=True, blank=True, help_text="Optional image of the issue.")
+    #image = models.ImageField(upload_to='issue_images/', null=True, blank=True, help_text="Optional image of the issue.")
     video_url = models.URLField(max_length=500, null=True, blank=True, help_text="Optional link to a video (e.g., YouTube, Vimeo).")
     # Status and Tracking
     status = models.CharField(max_length=50, choices=STATUS_CHOICES, default='Reported')
@@ -171,3 +171,22 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.user.username} on '{self.issue.title}' at {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+    
+
+
+class IssueImage(models.Model):
+    """A model to store one of the multiple images for a single issue."""
+    issue = models.ForeignKey(
+        'Issue', 
+        on_delete=models.CASCADE, 
+        related_name='images', # This is important! We'll use this to get all images for an issue.
+        help_text="The issue this image is associated with."
+    )
+    image = models.ImageField(
+        upload_to='issue_images/', # We can keep using the same directory
+        help_text="One of the images for the issue."
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Image for Issue PK {self.issue.pk} uploaded at {self.uploaded_at.strftime('%Y-%m-%d')}"

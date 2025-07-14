@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% load static %} {# If you need to load custom static files for this page specifically #}
+{% load static %}
+{% load crispy_forms_tags %}
 
 {% block title %}{{ page_title }} - CommunityWatch{% endblock %}
 
@@ -37,6 +38,13 @@
                     {% endif %}
                 </div>
             {% endfor %}
+
+            {# --- Manual field for multiple image uploads --- #}
+            <div class="mb-3">
+                <label for="id_images" class="form-label">Upload Images (you can select multiple):</label>
+                <input type="file" name="images" id="id_images" class="form-control" multiple>
+                <div class="form-text">You can hold Ctrl (or Cmd on Mac) to select more than one image.</div>
+            </div>
 
             <div id="geolocationMessage" class="alert alert-info my-3 d-none">Fetching location... Please wait.</div>
 
@@ -104,14 +112,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if(geoMessage) geoMessage.classList.remove('d-none', 'alert-info');
         if(geoMessage) geoMessage.classList.add('alert-warning');
     }
-
-    // Optional: Prevent form submission if lat/lon are still empty and required
-    // reportForm.addEventListener('submit', function(event) {
-    //     if ((!latField.value || !lonField.value) /* && you decide they are strictly required */) {
-    //         alert("Location could not be determined. Please ensure location services are enabled.");
-    //         event.preventDefault(); // Stop form submission
-    //     }
-    // });
 });
 </script>
 {% endblock %}

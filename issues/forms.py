@@ -15,15 +15,15 @@ class IssueForm(forms.ModelForm):
 
     class Meta:
         model = Issue
-        fields = ['title', 'description', 'category', 'image', 'video_url', 'latitude', 'longitude']
+        fields = ['title', 'description', 'category', 'video_url', 'latitude', 'longitude']
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Large pothole on Main Street'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Provide details about the issue, location landmarks, etc.'}),
-            'image': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            # 'images': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'video_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://example.com/video_link (Optional)'}),
         }
         help_texts = {
-            'image': 'Upload a clear picture of the issue if possible.',
+            # 'image': 'Upload a clear picture of the issue if possible.',
             'video_url': 'If you have a video of the issue (e.g., on YouTube, Vimeo), paste the link here.',
         }
 
@@ -31,7 +31,7 @@ class IssueForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # You can further customize fields here if needed
         # For example, make certain fields not required if they are optional in the model but ModelForm makes them required by default
-        self.fields['image'].required = False
+        # self.fields['image'].required = False
         self.fields['video_url'].required = False
 
     def clean(self):

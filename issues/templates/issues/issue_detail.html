@@ -82,11 +82,31 @@
 
                 </div>
                 <div class="col-md-5">
-                    {% if issue.image %}
-                        <p><strong>Image:</strong></p>
-                        <a href="{{ issue.image.url }}" target="_blank">
-                            <img src="{{ issue.image.url }}" alt="Issue image for {{ issue.title }}" class="issue-image img-fluid">
-                        </a>
+                    {% if issue.images.all %}
+                        <p><strong>Images:</strong></p>
+                        {# --- NEW: Bootstrap Carousel for Multiple Images --- #}
+                        <div id="issueImageCarousel" class="carousel slide" data-bs-ride="carousel">
+                            <div class="carousel-inner">
+                                {% for issue_image in issue.images.all %}
+                                <div class="carousel-item {% if forloop.first %}active{% endif %}">
+                                    <a href="{{ issue_image.image.url }}" target="_blank">
+                                        <img src="{{ issue_image.image.url }}" class="d-block w-100 issue-image" alt="Issue image {{ forloop.counter }}">
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if issue.images.all|length > 1 %}
+                            <button class="carousel-control-prev" type="button" data-bs-target="#issueImageCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#issueImageCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                            {% endif %}
+                        </div>
+                        {# --- END CAROUSEL --- #}
                     {% else %}
                         <p><em>No image provided.</em></p>
                     {% endif %}
