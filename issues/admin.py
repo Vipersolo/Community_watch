@@ -1,3 +1,5 @@
+# issues/admin.py
+
 from django.contrib import admin, messages
 from django.utils.html import format_html
 from django.urls import reverse
@@ -34,6 +36,14 @@ class IssueImageInline(admin.TabularInline):
 # ------------------------------
 @admin.register(Issue)
 class IssueAdmin(admin.ModelAdmin):
+    # Display manager's full name or username
+    def assigned_manager_name(self, obj):
+        if obj.assigned_to_manager:
+            return obj.assigned_to_manager.get_full_name() or obj.assigned_to_manager.username
+        return "Not Assigned"
+    assigned_manager_name.short_description = 'Manager Name'
+
+    # Show thumbnail in list view
     def list_image_preview(self, obj):
         first_image = obj.images.first()
         if first_image and first_image.image:
@@ -78,11 +88,15 @@ class IssueAdmin(admin.ModelAdmin):
     raw_id_fields = ('user', 'category', 'assigned_to_manager')
 
     fieldsets = (
-        (None, {
-            'fields': ('title', 'description', 'user', 'category')
-        }),
+        (None, {'fields': ('title', 'description', 'user', 'category')}),
         ('Assignment & Workflow', {
-            'fields': ('status', 'priority', 'assigned_to_manager', 'internal_notes', 'municipal_area')
+            'fields': (
+                'status',
+                'priority',
+                ('assigned_to_manager', 'assigned_manager_name'),
+                'internal_notes',
+                'municipal_area'
+            )
         }),
         ('Location & Media', {
             'fields': ('latitude', 'longitude', 'video_url')
@@ -99,7 +113,8 @@ class IssueAdmin(admin.ModelAdmin):
 
     readonly_fields = (
         'reported_date', 'created_at', 'updated_at',
-        'upvotes_count', 'resolution_notes', 'resolution_image', 'municipal_area'
+        'upvotes_count', 'resolution_notes', 'resolution_image', 'municipal_area',
+        'assigned_manager_name'
     )
 
     inlines = [IssueImageInline]
