@@ -1,18 +1,37 @@
 {% extends "base.html" %}
-{% load crispy_forms_tags %} {# IMPORTANT: Load the crispy template tags #}
+{% load crispy_forms_tags %}
 
 {% block title %}Register - CommunityWatch{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card p-4">
+<div class="row justify-content-center py-4">
+    <div class="col-md-7 col-lg-6">
+        <div class="card p-4 shadow-sm">
             <h2 class="card-title text-center mb-4">Create an Account</h2>
-            <form method="POST">
+            
+            
+            <form method="POST" novalidate>
                 {% csrf_token %}
+
+                {# --- NEW: General Error Alert --- #}
+                {% if form.errors %}
+                    <div class="alert alert-danger">
+                        <strong>Please correct the errors below.</strong>
+                        {% if form.non_field_errors %}
+                            <ul class="mb-0 mt-2">
+                            {% for error in form.non_field_errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                {# --- END NEW --- #}
+                
                 {{ form|crispy }}
-                <div class="d-grid"> {# Use d-grid for a full-width button #}
-                   <button type="submit" class="btn btn-primary mt-3">Register</button>
+                
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary mt-3">Register</button>
                 </div>
             </form>
             <p class="mt-3 text-center">Already have an account? <a href="{% url 'users:login' %}">Login here</a>.</p>

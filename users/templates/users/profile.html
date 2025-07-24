@@ -1,17 +1,50 @@
 {% extends "base.html" %}
-{% block title %}{{ user.username }}'s Profile - CommunityWatch{% endblock %}
+{% load crispy_forms_tags %} {# Load crispy tags #}
+
+{% block title %}Your Profile - CommunityWatch{% endblock %}
 
 {% block content %}
-<h2>{{ user.username }}'s Profile</h2>
-<p><strong>Email:</strong> {{ user.email }}</p>
-<p><strong>Role:</strong> {{ user.get_role_display }}</p> {# Uses get_FOO_display for choice fields #}
-<p><strong>Email Verified:</strong> {% if user.email_verified_at %}Yes (at {{ user.email_verified_at }}){% else %}No{% endif %}</p>
-<p><strong>Joined:</strong> {{ user.date_joined }}</p>
+<div class="row">
+    {# Left Column for Profile Info & Links #}
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h4>{{ user.username }}</h4>
+            </div>
+            <div class="card-body">
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Role:</strong> {{ user.get_role_display }}</p>
+                <p><strong>Joined:</strong> {{ user.date_joined|date:"F d, Y" }}</p>
+                <hr>
+                <h5>Actions</h5>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'users:password_change' %}" class="btn btn-secondary">Change Password</a>
+                    {% if user.is_municipal_manager %}
+                        <a href="{% url 'issues:manager_dashboard' %}" class="btn btn-info">View Manager Dashboard</a>
+                    {% else %}
+                        <a href="{% url 'issues:my_reported_issues' %}" class="btn btn-info">View My Reported Issues</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
 
-<hr>
-<h4>Actions:</h4>
-<p><a href="{% url 'users:password_change' %}" class="btn btn-secondary">Change Password</a></p>
-{# Add link to edit profile details later #}
-<p><a href="{% url 'issues:my_reported_issues' %}" class="btn btn-info">My Reported Issues</a></p> {# We'll create this later #}
+    {# Right Column for Editing Profile #}
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4>Edit Your Profile</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {% csrf_token %}
 
+                    {{ update_form|crispy }} {# Render the form using crispy #}
+
+                    <button type="submit" class="btn btn-primary mt-3">Save Changes</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

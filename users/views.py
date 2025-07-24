@@ -12,6 +12,7 @@ from django.template.loader import render_to_string
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
+from .forms import UserUpdateForm
 
 
 from .forms import UserRegisterForm
@@ -63,8 +64,21 @@ def activate_account(request, uidb64, token):
         return redirect('home') # Or a specific error page
     
 
-# Add this to users/views.py
-@login_required # Ensures only logged-in users can access
+
+@login_required
 def profile(request):
-    # You can add forms here later for profile editing
-    return render(request, 'users/profile.html', {'user': request.user})
+    if request.method == 'POST':
+        # This is for handling the form submission
+        update_form = UserUpdateForm(request.POST, instance=request.user)
+        if update_form.is_valid():
+            update_form.save()
+            messages.success(request, 'Your profile has been updated successfully!')
+            return redirect('users:profile') # Redirect to the same page to see the changes
+    else:
+        # This is for displaying the form on a GET request
+        update_form = UserUpdateForm(instance=request.user)
+
+    context = {
+        'update_form': update_form
+    }
+    return render(request, 'users/profile.html', context)

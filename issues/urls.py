@@ -15,4 +15,5 @@ urlpatterns = [
      # --- NEW URL for Admin Dashboard ---
     path('dashboard/admin/', views.admin_dashboard, name='admin_dashboard'),
     path('dashboard/manager/', views.manager_dashboard, name='manager_dashboard'), # NEW URL
+    path('reports/generate/', views.generate_issue_report, name='generate_issue_report'),
 ]

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Issue Report</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1.5cm;
+        }
+        body {
+            font-family: sans-serif;
+            color: #333;
+        }
+        h1, h2 {
+            text-align: center;
+            color: #0d6efd;
+        }
+        .report-meta {
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 12px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+            font-size: 10px;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <h1>CommunityWatch - Civic Issue Report</h1>
+    <div class="report-meta">
+        <p>
+            <strong>Report Period:</strong> {{ start_date|date:"F d, Y" }} to {{ end_date|date:"F d, Y" }}<br>
+            <strong>Status Filter:</strong> {{ status_filter }}<br>
+            <strong>Generated On:</strong> {{ generated_at|date:"F d, Y, H:i" }}
+        </p>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Category</th>
+                <th>Reported By</th>
+                <th>Reported On</th>
+                <th>Priority</th>
+                <th>Assigned To</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for issue in issues %}
+            <tr>
+                <td>{{ issue.pk }}</td>
+                <td>{{ issue.title }}</td>
+                <td>{{ issue.category.name|default:"N/A" }}</td>
+                <td>{{ issue.user.username }}</td>
+                <td>{{ issue.reported_date|date:"Y-m-d" }}</td>
+                <td>{{ issue.priority }}</td>
+                <td>{{ issue.assigned_to_manager.username|default:"Unassigned" }}</td>
+                <td>{{ issue.get_status_display }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" style="text-align: center;">No issues found for the selected criteria.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

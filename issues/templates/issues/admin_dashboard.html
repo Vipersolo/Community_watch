@@ -19,7 +19,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-white bg-warning mb-3">
+            <div class="card text-dark bg-info mb-3"> {# Changed from warning for better contrast #}
                 <div class="card-header">Pending Issues</div>
                 <div class="card-body">
                     <h4 class="card-title">{{ pending_issues_count }}</h4>
@@ -103,25 +103,21 @@
                 <div class="card-header">
                     Recently Reported Issues (Latest 5)
                 </div>
-                {% if recently_reported_issues %}
                 <ul class="list-group list-group-flush">
-                    {% for issue in recently_reported_issues %}
+                {% for issue in recently_reported_issues %}
                     <li class="list-group-item">
                         <a href="{% url 'issues:issue_detail' issue.pk %}">{{ issue.title|truncatechars:40 }}</a>
                         <small class="text-muted d-block">By: {{ issue.user.username }} - {{ issue.reported_date|timesince }} ago</small>
                     </li>
-                    {% endfor %}
+                {% empty %}
+                    <li class="list-group-item">No issues reported recently.</li>
+                {% endfor %}
                 </ul>
-                {% else %}
-                <div class="card-body">
-                    <p class="card-text">No issues reported recently.</p>
-                </div>
-                {% endif %}
             </div>
         </div>
     </div>
 
-    {# --- Quick Management Links --- #}
+    {# --- CORRECTED Quick Management Links --- #}
     <div class="row mt-4">
         <div class="col-12">
             <h3>Quick Management Links</h3>
@@ -129,7 +125,9 @@
                 <a href="{% url 'admin:issues_issue_changelist' %}" class="list-group-item list-group-item-action">Manage All Issues</a>
                 <a href="{% url 'admin:issues_issuecategory_changelist' %}" class="list-group-item list-group-item-action">Manage Issue Categories</a>
                 <a href="{% url 'admin:users_user_changelist' %}" class="list-group-item list-group-item-action">Manage Users</a>
-                {# Add more links as needed #}
+                <a href="{% url 'issues:generate_issue_report' %}" class="list-group-item list-group-item-action list-group-item-info">
+                    <i class="fas fa-file-pdf"></i> Generate PDF Report
+                </a>
             </div>
         </div>
     </div>

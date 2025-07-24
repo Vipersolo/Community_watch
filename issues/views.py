@@ -14,9 +14,12 @@ from .forms import IssueForm # The form we just created
 from .models import Upvote # Import Upvote model
 from django.db.models import Q # Import Q objects for OR queries
 from django.urls import reverse # For generating admin URLs
-from django.db.models import Case, When, Value, IntegerField # <-- ADD THESE EXPLICIT IMPORTS
-# (If you had 'from django.db import models', these are technically under models.Case etc.,
-# but explicit imports are clearer and often better for linters)
+from django.db.models import Case, When, Value, IntegerField 
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from weasyprint import HTML
+from .forms import ReportGenerationForm # Import the new form
+import datetime
 
 # (Any existing views like temp_report_issue_placeholder can be removed or commented out)
 User = get_user_model()
@@ -321,3 +324,54 @@ def manager_dashboard(request):
         'assigned_issues': assigned_issues,
     }
     return render(request, 'issues/manager_dashboard.html', context)
+
+
+
+
+#report
+
+@staff_member_required
+def generate_issue_report(request):
+    if request.method == 'POST':
+        form = ReportGenerationForm(request.POST)
+        if form.is_valid():
+            start_date = form.cleaned_data['start_date']
+            end_date = form.cleaned_data['end_date']
+            status = form.cleaned_data['status']
+
+            # Filter the issues based on the form data
+            issues_queryset = Issue.objects.filter(
+                reported_date__range=(start_date, end_date)
+            ).select_related('user', 'category', 'assigned_to_manager').order_by('reported_date')
+
+            if status: # If a specific status was chosen
+                issues_queryset = issues_queryset.filter(status=status)
+
+            # Context for the PDF template
+            context = {
+                'issues': issues_queryset,
+                'start_date': start_date,
+                'end_date': end_date,
+                'status_filter': dict(Issue.STATUS_CHOICES).get(status, 'All') if status else 'All',
+                'generated_at': datetime.datetime.now(),
+            }
+
+            # Render the HTML template to a string
+            html_string = render_to_string('reports/issue_report_pdf.html', context)
+
+            # Generate the PDF
+            html = HTML(string=html_string)
+            pdf = html.write_pdf()
+
+            # Create an HTTP response with the PDF
+            response = HttpResponse(pdf, content_type='application/pdf')
+            response['Content-Disposition'] = f'attachment; filename="CommunityWatch_Report_{start_date}_to_{end_date}.pdf"'
+
+            return response
+    else:
+        form = ReportGenerationForm()
+
+    return render(request, 'reports/report_generation_form.html', {
+        'form': form,
+        'page_title': 'Generate Issue Report'
+    })
